@@ -1,8 +1,13 @@
-from telegram.ext import Application, CommandHandler
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from telegram import Update
 import requests
 import os
 
 TOKEN = os.environ.get("TOKEN")
+
+# ==== ADMIN THÔNG TIN ====
+ADMIN_ID = 123456789  # Thay bằng UID Telegram của bạn
+ADMIN_USERNAME = "DuRinn_LeTuanDiem"  # Username Telegram của bạn
 
 TIKWM_API = "https://www.tikwm.com/api/"
 HEADERS = {
@@ -16,7 +21,7 @@ async def start(update, context):
         "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
         "🤖 Công cụ tra cứu IP & tải TikTok video/ảnh chất lượng cao.\n\n"
         "📌 Các thành viên phát triển BOT:\n"
-        "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
+        f"   👤 {ADMIN_USERNAME} – Telegram UID: {ADMIN_ID}\n"
         "   👤 Telegram Support – @Telegram\n"
         "   🤖 Bot chính thức – @ToMinhDiem_bot\n\n"
         "💡 Gõ /help để xem lệnh khả dụng."
@@ -73,7 +78,7 @@ async def check_ip(update, context):
     else:
         await update.message.reply_text(info)
 
-# ==== TikTok Downloader (auto tải chất lượng cao nhất) ====
+# ==== TikTok Downloader ====
 async def download_tiktok(update, context):
     try:
         await update.message.delete()
@@ -98,23 +103,34 @@ async def download_tiktok(update, context):
         data = data_json["data"]
         title = data.get("title", "TikTok")
 
-        # Nếu là video
         if data.get("hdplay") or data.get("play"):
             url = data.get("hdplay") or data.get("play")
             await waiting_msg.delete()
             await update.message.reply_video(url, caption=f"🎬 {title} (chất lượng cao nhất)")
-
-        # Nếu là bài ảnh
         elif data.get("images"):
             await waiting_msg.edit_text(f"🖼 {title}\n\nĐang gửi ảnh gốc...")
             for img_url in data["images"]:
                 await update.message.reply_photo(img_url)
-
         else:
             await waiting_msg.edit_text("⚠️ Không tìm thấy video/ảnh trong link này.")
 
     except Exception as e:
         await waiting_msg.edit_text(f"⚠️ Lỗi khi tải TikTok: {e}")
+
+# ==== Forward mọi tin nhắn về ADMIN ====
+async def forward_message(update: Update, context):
+    user = update.message.from_user
+    text = update.message.text or "(Không phải text, có thể là file/ảnh)"
+
+    # Gửi đầy đủ thông tin người gửi và UID admin
+    msg = (
+        f"📩 Tin nhắn mới\n"
+        f"👤 User: {user.username} (ID: {user.id})\n"
+        f"💬 Nội dung: {text}\n\n"
+        f"🔹 Gửi tới ADMIN: {ADMIN_USERNAME} (UID: {ADMIN_ID})"
+    )
+
+    await context.bot.send_message(chat_id=ADMIN_ID, text=msg)
 
 # ==== Main ====
 def main():
@@ -124,6 +140,9 @@ def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("ip", check_ip))
     app.add_handler(CommandHandler("tiktok", download_tiktok))
+
+    # Handler cho mọi tin nhắn thông thường (text) → gửi về admin
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
 
     print("🤖 Bot đang chạy...")
     app.run_polling()
