@@ -1,12 +1,11 @@
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-import yt_dlp
+import youtube_dl  # Thay yt-dlp bằng youtube_dl
 import requests
-import soundcloud
 import os
 
 # ==== TOKEN ====
-TOKEN = os.environ.get("TOKEN")  # Thêm TOKEN bot của bạn từ BotFather
+TOKEN = os.environ.get("TOKEN")
 
 # ==== TikTok API ====
 TIKWM_API = "https://www.tikwm.com/api/"
@@ -19,7 +18,7 @@ HEADERS = {
 async def start(update, context):
     await update.message.reply_text(
         "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
-        "🤖 Công cụ tra cứu IP & tải TikTok video/ảnh, YouTube Shorts, SoundCloud.\n\n"
+        "🤖 Công cụ tra cứu IP & tải TikTok video/ảnh chất lượng cao.\n\n"
         "📌 Các thành viên phát triển BOT:\n"
         "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
         "   👤 Telegram Support – @Telegram\n"
@@ -36,7 +35,7 @@ async def help_command(update, context):
         "/ip <địa chỉ ip> - Kiểm tra thông tin IP\n"
         "/tiktok <link> - Tải video/ảnh TikTok\n"
         "/yt <link> - Tải video YouTube Shorts\n"
-        "/sc <link> - Tải âm thanh SoundCloud\n"
+        "/sc <link> - Tải âm thanh SoundCloud"
     )
 
 # ==== Check IP ====
@@ -138,7 +137,7 @@ async def download_youtube(update, context):
             'outtmpl': 'downloads/%(title)s.%(ext)s',
         }
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             info_dict = ydl.extract_info(link, download=True)
             video_url = info_dict.get('url', None)
 
@@ -157,6 +156,8 @@ async def download_soundcloud(update, context):
     waiting_msg = await update.message.reply_text("⏳ Đang xử lý link SoundCloud, vui lòng chờ...")
 
     try:
+        # Cách tải âm thanh từ SoundCloud có thể khác, tùy vào API có sẵn
+        # Ví dụ, sử dụng API công cộng hoặc tool khác như `scdl`
         scdl_url = f"https://scdl.com/{link}"
         await waiting_msg.delete()
         await update.message.reply_text(f"Tải nhạc từ SoundCloud tại: {scdl_url}")
