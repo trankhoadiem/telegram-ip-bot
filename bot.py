@@ -1,126 +1,103 @@
+import requests
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-import requests
-import yt_dlp
-import os
-import soundcloud
 
 # ==== TOKEN ====
-TOKEN = os.environ.get("TOKEN")
+TOKEN = 'YOUR_BOT_TOKEN'  # Thay 'YOUR_BOT_TOKEN' bằng token thật của bạn
 
-# ==== TikTok API ====
-TIKWM_API = "https://www.tikwm.com/api/"
-HEADERS = {
-    "User-Agent": "Mozilla/5.0",
-    "Referer": "https://www.tikwm.com/"
-}
+# ==== Snaptik Downloader ====
+def download_tiktok(url):
+    try:
+        download_url = f"https://snaptik.vn/api/download?url={url}"
+        res = requests.get(download_url)
+        if res.status_code == 200:
+            return res.text  # Hoặc URL tải về
+        else:
+            return "❌ Không tải được video TikTok."
+    except Exception as e:
+        return f"⚠️ Lỗi khi tải video TikTok: {e}"
 
-# ==== SoundCloud API ====
-SC_CLIENT_ID = 'YOUR_SOUNDCLOUD_CLIENT_ID'  # Đăng ký API key từ SoundCloud
+# ==== YouTube Downloader ====
+def download_youtube(url):
+    try:
+        download_url = f"https://y2-mate.download/yt?url={url}"
+        res = requests.get(download_url)
+        if res.status_code == 200:
+            return res.text  # Hoặc URL tải về
+        else:
+            return "❌ Không tải được video YouTube."
+    except Exception as e:
+        return f"⚠️ Lỗi khi tải video YouTube: {e}"
 
-# ==== /start ====
+# ==== SoundCloud Downloader ====
+def download_soundcloud(url):
+    try:
+        download_url = f"https://taivideoaz.com/tai-nhac-soundcloud/?url={url}"
+        res = requests.get(download_url)
+        if res.status_code == 200:
+            return res.text  # Hoặc URL tải về
+        else:
+            return "❌ Không tải được nhạc từ SoundCloud."
+    except Exception as e:
+        return f"⚠️ Lỗi khi tải nhạc: {e}"
+
+# ==== Start Command ====
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
-        "🤖 Công cụ tra cứu IP & tải YouTube/TikTok video/ảnh chất lượng cao.\n\n"
-        "📌 Các thành viên phát triển BOT:\n"
-        " 👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
-        " 👤 Telegram Support – @Telegram\n"
-        " 🤖 Bot chính thức – @ToMinhDiem_bot\n\n"
+        "🤖 Công cụ tải video YouTube, TikTok và nhạc SoundCloud!\n\n"
         "💡 Gõ /help để xem lệnh khả dụng."
     )
 
-# ==== /help ====
+# ==== Help Command ====
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "📖 Lệnh có sẵn:\n\n"
         "/start - Bắt đầu\n"
         "/help - Trợ giúp\n"
-        "/ip <địa chỉ ip> - Kiểm tra thông tin IP\n"
-        "/tiktok <link> - Tải video/ảnh TikTok\n"
-        "/sc <link> - Tải âm thanh SoundCloud"
+        "/sc <link> - Tải nhạc từ SoundCloud\n"
+        "/yt <link> - Tải video từ YouTube\n"
+        "/tiktok <link> - Tải video từ TikTok"
     )
 
-# ==== SoundCloud Downloader ====
-async def download_soundcloud(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# ==== Download SoundCloud ====
+async def download_music(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("👉 Dùng: /sc <link SoundCloud>")
         return
     link = context.args[0].strip()
-    waiting_msg = await update.message.reply_text("⏳ Đang xử lý link SoundCloud, vui lòng chờ...")
-    
-    try:
-        # Khởi tạo client SoundCloud
-        client = soundcloud.Client(client_id=SC_CLIENT_ID)
-        
-        # Lấy track từ link SoundCloud
-        track = client.get('/resolve', url=link)
-        
-        if track:
-            await waiting_msg.edit_text(f"🎵 Đang tải nhạc: {track.title}")
-            stream_url = track.stream_url
-            audio_url = f"{stream_url}?client_id={SC_CLIENT_ID}"
-            await update.message.reply_audio(audio_url, caption=f"🎶 {track.title}")
-        else:
-            await waiting_msg.edit_text("❌ Không tải được từ SoundCloud, vui lòng kiểm tra lại link.")
-    except Exception as e:
-        await waiting_msg.edit_text(f"⚠️ Lỗi khi tải từ SoundCloud: {e}")
+    result = download_soundcloud(link)
+    await update.message.reply_text(result)
 
-# ==== TikTok Downloader ====
-async def download_tiktok(update, context):
-    try:
-        await update.message.delete()
-    except:
-        pass
+# ==== Download YouTube ====
+async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text("👉 Dùng: /yt <link YouTube>")
+        return
+    link = context.args[0].strip()
+    result = download_youtube(link)
+    await update.message.reply_text(result)
 
+# ==== Download TikTok ====
+async def download_tiktok_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("👉 Dùng: /tiktok <link TikTok>")
         return
-
     link = context.args[0].strip()
-    waiting_msg = await update.message.reply_text("⏳ Đang xử lý link TikTok, vui lòng chờ...")
+    result = download_tiktok(link)
+    await update.message.reply_text(result)
 
-    try:
-        res = requests.post(TIKWM_API, data={"url": link}, headers=HEADERS, timeout=20)
-        data_json = res.json()
-
-        if data_json.get("code") != 0 or "data" not in data_json:
-            await waiting_msg.edit_text("❌ Không tải được TikTok. Vui lòng kiểm tra lại link!")
-            return
-
-        data = data_json["data"]
-        title = data.get("title", "TikTok")
-
-        # Nếu là video
-        if data.get("hdplay") or data.get("play"):
-            url = data.get("hdplay") or data.get("play")
-            await waiting_msg.delete()
-            await update.message.reply_video(url, caption=f"🎬 {title} (chất lượng cao nhất)")
-
-        # Nếu là bài ảnh
-        elif data.get("images"):
-            await waiting_msg.edit_text(f"🖼 {title}\n\nĐang gửi ảnh gốc...")
-            for img_url in data["images"]:
-                await update.message.reply_photo(img_url)
-
-        else:
-            await waiting_msg.edit_text("⚠️ Không tìm thấy video/ảnh trong link này.")
-
-    except Exception as e:
-        await waiting_msg.edit_text(f"⚠️ Lỗi khi tải TikTok: {e}")
-
-# ==== Main ====
+# ==== Main ==== 
 def main():
     app = Application.builder().token(TOKEN).build()
 
     # Commands
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(CommandHandler("ip", check_ip))
-    app.add_handler(CommandHandler("tiktok", download_tiktok))
-    app.add_handler(CommandHandler("sc", download_soundcloud))
+    app.add_handler(CommandHandler("sc", download_music))  # SoundCloud
+    app.add_handler(CommandHandler("yt", download_video))  # YouTube
+    app.add_handler(CommandHandler("tiktok", download_tiktok_handler))  # TikTok
 
-    # Run the bot
     app.run_polling()
 
 if __name__ == "__main__":
