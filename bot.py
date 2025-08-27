@@ -1,22 +1,12 @@
-import logging
-import re
-import os
-import requests
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-from yt_dlp import YoutubeDL
-from gtts import gTTS
-from PIL import Image, ImageDraw, ImageFont
-import io
+import requests
+import os
 
-# Enable logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-logger = logging.getLogger(__name__)
+# ==== TOKEN ====
+TOKEN = os.environ.get("TOKEN")
 
-# Bot token from environment variable or replace with your token
-TOKEN = os.environ.get("TOKEN", "YOUR_TELEGRAM_BOT_TOKEN")
-
-# TikWM API for TikTok downloading
+# ==== TikTok API ====
 TIKWM_API = "https://www.tikwm.com/api/"
 HEADERS = {
     "User-Agent": "Mozilla/5.0",
@@ -24,30 +14,25 @@ HEADERS = {
 }
 
 # ==== /start ====
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def start(update, context):
     await update.message.reply_text(
         "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
-        "🤖 Công cụ tra cứu IP & tải YouTube/TikTok video/ảnh chất lượng cao.\n\n"
+        "🤖 Công cụ tra cứu IP & tải TikTok video/ảnh chất lượng cao.\n\n"
         "📌 Các thành viên phát triển BOT:\n"
-        " 👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
-        " 👤 Telegram Support – @Telegram\n"
-        " 🤖 Bot chính thức – @ToMinhDiem_bot\n\n"
+        "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
+        "   👤 Telegram Support – @Telegram\n"
+        "   🤖 Bot chính thức – @ToMinhDiem_bot\n\n"
         "💡 Gõ /help để xem lệnh khả dụng."
     )
 
 # ==== /help ====
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def help_command(update, context):
     await update.message.reply_text(
         "📖 Lệnh có sẵn:\n\n"
         "/start - Bắt đầu\n"
         "/help - Trợ giúp\n"
         "/ip <địa chỉ ip> - Kiểm tra thông tin IP\n"
-        "/tiktok <link> - Tải video/ảnh TikTok\n"
-        "/yt <link> - Tải video YouTube Shorts\n"
-        "/sc <link> - Tải âm thanh SoundCloud\n"
-        "/meme <link> <chữ> - Tạo meme từ ảnh\n"
-        "/tts <text> - Chuyển văn bản thành giọng nói\n"
-        "/weather <city> - Thông tin thời tiết"
+        "/tiktok <link> - Tải video/ảnh TikTok chất lượng cao"
     )
 
 # ==== Check IP ====
@@ -134,88 +119,12 @@ async def download_tiktok(update, context):
     except Exception as e:
         await waiting_msg.edit_text(f"⚠️ Lỗi khi tải TikTok: {e}")
 
-# ==== YouTube Downloader (Shorts) ====
-async def download_youtube(update, context):
-    if not context.args:
-        await update.message.reply_text("👉 Dùng: /yt <link YouTube>")
-        return
-
-    link = context.args[0].strip()
-    waiting_msg = await update.message.reply_text("⏳ Đang xử lý link YouTube, vui lòng chờ...")
-
-    try:
-        ydl_opts = {
-            'format': 'bestaudio/best',  # Chọn chất lượng tốt nhất
-            'outtmpl': 'downloads/%(title)s.%(ext)s',
-        }
-
-        with YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(link, download=True)
-            video_url = info_dict.get('url', None)
-
-            await waiting_msg.delete()
-            await update.message.reply_video(video_url, caption=f"🎬 YouTube Short: {info_dict.get('title', 'Video')}")
-    except Exception as e:
-        await waiting_msg.edit_text(f"⚠️ Lỗi khi tải video YouTube: {e}")
-
-# ==== SoundCloud Downloader ====
-async def download_soundcloud(update, context):
-    if not context.args:
-        await update.message.reply_text("👉 Dùng: /sc <link SoundCloud>")
-        return
-
-    link = context.args[0].strip()
-    waiting_msg = await update.message.reply_text("⏳ Đang xử lý link SoundCloud, vui lòng chờ...")
-
-    try:
-        scdl_url = f"https://scdl.com/{link}"
-        await waiting_msg.delete()
-        await update.message.reply_text(f"Tải nhạc từ SoundCloud tại: {scdl_url}")
-    except Exception as e:
-        await waiting_msg.edit_text(f"⚠️ Lỗi khi tải từ SoundCloud: {e}")
-
-# ==== Text to Speech (TTS) ====
-async def text_to_speech(update, context):
-    if not context.args:
-        await update.message.reply_text("👉 Dùng: /tts <văn bản>")
-        return
-
-    text = ' '.join(context.args)
-
-    try:
-        tts = gTTS(text, lang='vi')
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
-            tts.save(tmp.name)
-            await update.message.reply_audio(open(tmp.name, 'rb'), caption="Giọng nói của tôi")
-    except Exception as e:
-        await update.message.reply_text(f"⚠️ Lỗi khi tạo giọng nói: {e}")
-
-# ==== Meme Creator ====
-async def create_meme(update, context):
-    if not context.args or len(context.args) < 2:
-        await update.message.reply_text("👉 Dùng: /meme <link image> <chữ>")
-        return
-
-    image_url = context.args[0]
-    text = ' '.join(context.args[1:])
-
-    try:
-        response = requests.get(image_url)
-        img = Image.open(io.BytesIO(response.content))
-
-        # Thêm chữ vào ảnh
-        draw = ImageDraw.Draw(img)
-        font = ImageFont.load_default()
-        draw.text((10, 10), text, font=font, fill="white")
-
-        # Lưu ảnh và gửi lại
-        img_byte_arr = io.BytesIO()
-        img.save(img_byte_arr, format='PNG')
-        img_byte_arr.seek(0)
-        
-        await update.message.reply_photo(img_byte_arr)
-    except Exception as e:
-        await update.message.reply_text(f"⚠️ Lỗi khi tạo meme: {e}")
+# ==== Welcome New Member ====
+async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    for member in update.message.new_chat_members:
+        await update.message.reply_text(
+            f"🎉 Chào mừng {member.full_name} đã tham gia nhóm {update.message.chat.title}!"
+        )
 
 # ==== Main ====
 def main():
@@ -226,12 +135,11 @@ def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("ip", check_ip))
     app.add_handler(CommandHandler("tiktok", download_tiktok))
-    app.add_handler(CommandHandler("yt", download_youtube))
-    app.add_handler(CommandHandler("sc", download_soundcloud))
-    app.add_handler(CommandHandler("tts", text_to_speech))
-    app.add_handler(CommandHandler("meme", create_meme))
 
-    # Run the bot
+    # Welcome new members
+    app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
+
+    print("🤖 Bot đang chạy...")
     app.run_polling()
 
 if __name__ == "__main__":
