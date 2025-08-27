@@ -1,4 +1,3 @@
-Api Bot Telegram
 from telegram.ext import Application, CommandHandler
 import requests
 import os
