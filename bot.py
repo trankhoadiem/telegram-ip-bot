@@ -1,6 +1,7 @@
 from telegram.ext import Application, CommandHandler
 import requests
 import os
+import yt_dlp
 
 TOKEN = os.environ.get("TOKEN")   # Token bot Telegram (set trên Railway)
 
@@ -8,12 +9,12 @@ TOKEN = os.environ.get("TOKEN")   # Token bot Telegram (set trên Railway)
 async def start(update, context):
     await update.message.reply_text(
         "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
-        "🤖 Đây là công cụ hỗ trợ tra cứu thông tin IP và tải video TikTok nhanh chóng.\n\n"
-        "📌 Các thành viên phát triển BOT:\n"
+        "🤖 Đây là công cụ hỗ trợ tra cứu IP, tải video TikTok & YouTube nhanh chóng.\n\n"
+        "📌 Bot được phát triển bởi:\n"
         "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
         "   👤 Telegram Support – @Telegram\n"
         "   🤖 Bot chính thức – @ToMinhDiem_bot\n\n"
-        "💡 Gõ /help để xem danh sách lệnh khả dụng."
+        "💡 Gõ /help để xem lệnh khả dụng."
     )
 
 # ==== /help ====
@@ -23,7 +24,8 @@ async def help_command(update, context):
         "/start - Bắt đầu\n"
         "/help - Trợ giúp\n"
         "/ip <địa chỉ ip> - Kiểm tra thông tin IP\n"
-        "/tiktok <link> - Tải video TikTok (không logo)"
+        "/tiktok <link> - Tải video TikTok\n"
+        "/yt <link> - Tải video YouTube"
     )
 
 # ==== Check IP ====
@@ -61,28 +63,46 @@ async def check_ip(update, context):
     else:
         await update.message.reply_text(info)
 
-# ==== Download TikTok Video ====
+# ==== Tải video TikTok ====
 async def download_tiktok(update, context):
     if not context.args:
-        await update.message.reply_text("👉 Dùng: /tiktok <link video TikTok>")
+        await update.message.reply_text("👉 Dùng: /tiktok <link>")
         return
+    url = context.args[0]
 
-    link = context.args[0]
     try:
-        api = "https://www.tikwm.com/api/"
-        res = requests.post(api, data={"url": link}).json()
+        ydl_opts = {"outtmpl": "video.mp4"}
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
 
-        if res.get("code") != 0:
-            await update.message.reply_text("❌ Không tải được video TikTok. Kiểm tra lại link!")
-            return
-
-        video_url = res["data"]["play"]   # Link video không logo
-        title = res["data"].get("title", "TikTok video")
-
-        await update.message.reply_video(video_url, caption=f"🎬 {title}")
+        with open("video.mp4", "rb") as f:
+            await update.message.reply_video(f, caption="✅ Video TikTok của bạn đây!")
+        os.remove("video.mp4")
 
     except Exception as e:
-        await update.message.reply_text(f"⚠️ Lỗi khi tải video TikTok: {e}")
+        await update.message.reply_text(f"⚠️ Lỗi tải TikTok: {e}")
+
+# ==== Tải video YouTube ====
+async def download_youtube(update, context):
+    if not context.args:
+        await update.message.reply_text("👉 Dùng: /yt <link>")
+        return
+    url = context.args[0]
+
+    try:
+        ydl_opts = {
+            "format": "mp4",
+            "outtmpl": "yt_video.mp4"
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+
+        with open("yt_video.mp4", "rb") as f:
+            await update.message.reply_video(f, caption="✅ Video YouTube của bạn đây!")
+        os.remove("yt_video.mp4")
+
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ Lỗi tải YouTube: {e}")
 
 # ==== Main ====
 def main():
@@ -92,6 +112,7 @@ def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("ip", check_ip))
     app.add_handler(CommandHandler("tiktok", download_tiktok))
+    app.add_handler(CommandHandler("yt", download_youtube))
 
     print("🤖 Bot đang chạy...")
     app.run_polling()
