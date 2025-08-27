@@ -58,3 +58,33 @@ def main():
 
 if __name__ == "__main__":
     main()
+import requests
+from telegram.ext import CommandHandler
+
+FB_TOKEN = os.getenv("FB_TOKEN")
+
+def check_fb(update, context):
+    if not context.args:
+        update.message.reply_text("Vui lòng nhập ID Facebook. Ví dụ: /fb 4")
+        return
+    
+    fb_id = context.args[0]
+    url = f"https://graph.facebook.com/{fb_id}"
+    params = {
+        "fields": "id,name,birthday,location,followers_count",
+        "access_token": FB_TOKEN
+    }
+    r = requests.get(url, params=params).json()
+    
+    msg = f"👤 Tên: {r.get('name')}\n🆔 ID: {r.get('id')}\n"
+    if "birthday" in r:
+        msg += f"🎂 Ngày sinh: {r['birthday']}\n"
+    if "location" in r:
+        msg += f"📍 Nơi sống: {r['location']['name']}\n"
+    if "followers_count" in r:
+        msg += f"👥 Người theo dõi: {r['followers_count']}\n"
+    
+    update.message.reply_text(msg)
+
+# trong main thêm:
+dispatcher.add_handler(CommandHandler("fb", check_fb))
