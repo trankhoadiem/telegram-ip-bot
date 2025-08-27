@@ -1,11 +1,17 @@
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import requests
-import yt_dlp
 import os
 
 # ==== TOKEN ====
 TOKEN = os.environ.get("TOKEN")
+
+# ==== TikTok API ====
+TIKWM_API = "https://www.tikwm.com/api/"
+HEADERS = {
+    "User-Agent": "Mozilla/5.0",
+    "Referer": "https://www.tikwm.com/"
+}
 
 # ==== /start ====
 async def start(update, context):
@@ -14,7 +20,7 @@ async def start(update, context):
         "🤖 Công cụ tra cứu IP & tải TikTok video/ảnh chất lượng cao.\n\n"
         "📌 Các thành viên phát triển BOT:\n"
         "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
-        "   👤 Telegram Support – @TraMy_2011\n"
+        "   👤 Telegram Support – @Telegram\n"
         "   🤖 Bot chính thức – @ToMinhDiem_bot\n\n"
         "💡 Gõ /help để xem lệnh khả dụng."
     )
@@ -26,8 +32,7 @@ async def help_command(update, context):
         "/start - Bắt đầu\n"
         "/help - Trợ giúp\n"
         "/ip <địa chỉ ip> - Kiểm tra thông tin IP\n"
-        "/tiktok <link> - Tải video/ảnh TikTok chất lượng cao\n"
-        "/biaYT <link video YouTube> - Tải ảnh bìa YouTube"
+        "/tiktok <link> - Tải video/ảnh TikTok chất lượng cao"
     )
 
 # ==== Check IP ====
@@ -86,7 +91,7 @@ async def download_tiktok(update, context):
     waiting_msg = await update.message.reply_text("⏳ Đang xử lý link TikTok, vui lòng chờ...")
 
     try:
-        res = requests.post("https://www.tikwm.com/api/", data={"url": link}, headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
+        res = requests.post(TIKWM_API, data={"url": link}, headers=HEADERS, timeout=20)
         data_json = res.json()
 
         if data_json.get("code") != 0 or "data" not in data_json:
@@ -114,30 +119,7 @@ async def download_tiktok(update, context):
     except Exception as e:
         await waiting_msg.edit_text(f"⚠️ Lỗi khi tải TikTok: {e}")
 
-# ==== YouTube Thumbnail Downloader ====
-async def download_youtube_thumbnail(update, context):
-    if not context.args:
-        await update.message.reply_text("👉 Dùng: /biaYT <link video YouTube>")
-        return
-
-    link = context.args[0].strip()
-    waiting_msg = await update.message.reply_text("⏳ Đang tải ảnh bìa video YouTube, vui lòng chờ...")
-
-    try:
-        video_id = link.split("v=")[-1]
-        thumbnail_url = f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg"
-        
-        res = requests.get(thumbnail_url)
-
-        if res.status_code == 200:
-            await waiting_msg.delete()
-            await update.message.reply_photo(thumbnail_url, caption="🎬 Ảnh bìa video YouTube")
-        else:
-            await waiting_msg.edit_text("⚠️ Không thể lấy ảnh bìa từ YouTube.")
-    except Exception as e:
-        await waiting_msg.edit_text(f"⚠️ Lỗi khi tải ảnh bìa YouTube: {e}")
-
-# ==== Welcome New Member ==== 
+# ==== Welcome New Member ====
 async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for member in update.message.new_chat_members:
         await update.message.reply_text(
@@ -153,7 +135,6 @@ def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("ip", check_ip))
     app.add_handler(CommandHandler("tiktok", download_tiktok))
-    app.add_handler(CommandHandler("biaYT", download_youtube_thumbnail))  # Lệnh tải ảnh bìa YouTube
 
     # Welcome new members
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
