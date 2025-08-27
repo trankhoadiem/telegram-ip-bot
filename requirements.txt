@@ -1,4 +1,4 @@
 python-telegram-bot==22.3
-yt-dlp
-requests
-scdl
+yt-dlp==2025.8.22
+requests==2.32.5
+soundcloud==0.5.0
