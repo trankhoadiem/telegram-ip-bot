@@ -20,7 +20,7 @@ async def start(update, context):
         "🤖 Công cụ tra cứu IP & tải TikTok video/ảnh chất lượng cao.\n\n"
         "📌 Các thành viên phát triển BOT:\n"
         "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
-        "   👤 Telegram Support – @Telegram\n"
+        "   👤 Telegram Support – @*******\n"
         "   🤖 Bot chính thức – @ToMinhDiem_bot\n\n"
         "💡 Gõ /help để xem lệnh khả dụng."
     )
