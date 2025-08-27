@@ -1,27 +1,17 @@
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
 import requests
+import yt_dlp
 import os
 
 # ==== TOKEN ====
 TOKEN = os.environ.get("TOKEN")
-
-# ==== TikTok API ====
-TIKWM_API = "https://www.tikwm.com/api/"
-HEADERS = {
-    "User-Agent": "Mozilla/5.0",
-    "Referer": "https://www.tikwm.com/"
-}
 
 # ==== /start ====
 async def start(update, context):
     await update.message.reply_text(
         "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
         "🤖 Công cụ tra cứu IP & tải TikTok video/ảnh chất lượng cao.\n\n"
-        "📌 Các thành viên phát triển BOT:\n"
-        "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
-        "   👤 Telegram Support – @Telegram\n"
-        "   🤖 Bot chính thức – @ToMinhDiem_bot\n\n"
         "💡 Gõ /help để xem lệnh khả dụng."
     )
 
@@ -32,7 +22,7 @@ async def help_command(update, context):
         "/start - Bắt đầu\n"
         "/help - Trợ giúp\n"
         "/ip <địa chỉ ip> - Kiểm tra thông tin IP\n"
-        "/tiktok <link> - Tải video/ảnh TikTok chất lượng cao"
+        "/tiktok <link> - Tải video/ảnh TikTok\n"
     )
 
 # ==== Check IP ====
@@ -91,7 +81,7 @@ async def download_tiktok(update, context):
     waiting_msg = await update.message.reply_text("⏳ Đang xử lý link TikTok, vui lòng chờ...")
 
     try:
-        res = requests.post(TIKWM_API, data={"url": link}, headers=HEADERS, timeout=20)
+        res = requests.post("https://www.tikwm.com/api/", data={"url": link}, headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
         data_json = res.json()
 
         if data_json.get("code") != 0 or "data" not in data_json:
@@ -119,28 +109,3 @@ async def download_tiktok(update, context):
     except Exception as e:
         await waiting_msg.edit_text(f"⚠️ Lỗi khi tải TikTok: {e}")
 
-# ==== Welcome New Member ====
-async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    for member in update.message.new_chat_members:
-        await update.message.reply_text(
-            f"🎉 Chào mừng {member.full_name} đã tham gia nhóm {update.message.chat.title}!"
-        )
-
-# ==== Main ====
-def main():
-    app = Application.builder().token(TOKEN).build()
-
-    # Commands
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(CommandHandler("ip", check_ip))
-    app.add_handler(CommandHandler("tiktok", download_tiktok))
-
-    # Welcome new members
-    app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
-
-    print("🤖 Bot đang chạy...")
-    app.run_polling()
-
-if __name__ == "__main__":
-    main()
