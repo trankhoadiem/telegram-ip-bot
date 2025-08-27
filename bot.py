@@ -1,12 +1,10 @@
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+Api Bot Telegram
+from telegram.ext import Application, CommandHandler
 import requests
 import os
 
-# ==== TOKEN ====
 TOKEN = os.environ.get("TOKEN")
 
-# ==== TikTok API ====
 TIKWM_API = "https://www.tikwm.com/api/"
 HEADERS = {
     "User-Agent": "Mozilla/5.0",
@@ -76,7 +74,7 @@ async def check_ip(update, context):
     else:
         await update.message.reply_text(info)
 
-# ==== TikTok Downloader ====
+# ==== TikTok Downloader (auto tải chất lượng cao nhất) ====
 async def download_tiktok(update, context):
     try:
         await update.message.delete()
@@ -119,25 +117,14 @@ async def download_tiktok(update, context):
     except Exception as e:
         await waiting_msg.edit_text(f"⚠️ Lỗi khi tải TikTok: {e}")
 
-# ==== Welcome New Member ====
-async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    for member in update.message.new_chat_members:
-        await update.message.reply_text(
-            f"🎉 Chào mừng {member.full_name} đã tham gia nhóm {update.message.chat.title}!"
-        )
-
 # ==== Main ====
 def main():
     app = Application.builder().token(TOKEN).build()
 
-    # Commands
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("ip", check_ip))
     app.add_handler(CommandHandler("tiktok", download_tiktok))
-
-    # Welcome new members
-    app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
 
     print("🤖 Bot đang chạy...")
     app.run_polling()
