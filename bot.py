@@ -1,5 +1,4 @@
 import logging
-import re
 import os
 import requests
 from telegram import Update
@@ -109,6 +108,7 @@ async def download_tiktok(update: Update, context: ContextTypes.DEFAULT_TYPE):
             url = data.get("hdplay") or data.get("play")
             await waiting_msg.delete()
             await update.message.reply_video(url, caption=f"🎬 {title} (chất lượng cao nhất)")
+
         # If it's an image post
         elif data.get("images"):
             await waiting_msg.edit_text(f"🖼 {title}\n\nĐang gửi ảnh gốc...")
