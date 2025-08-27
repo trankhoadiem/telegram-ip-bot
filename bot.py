@@ -1,5 +1,6 @@
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
+import yt_dlp
 import requests
 import os
 
@@ -20,7 +21,7 @@ async def start(update, context):
         "🤖 Công cụ tra cứu IP & tải TikTok video/ảnh chất lượng cao.\n\n"
         "📌 Các thành viên phát triển BOT:\n"
         "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
-        "   👤 FaceBook Support – Https:/facebook.com/ToMinhDiem.jp/\n"
+        "   👤 Telegram Support – @TraMy_2011\n"
         "   🤖 Bot chính thức – @ToMinhDiem_bot\n\n"
         "💡 Gõ /help để xem lệnh khả dụng."
     )
@@ -32,7 +33,8 @@ async def help_command(update, context):
         "/start - Bắt đầu\n"
         "/help - Trợ giúp\n"
         "/ip <địa chỉ ip> - Kiểm tra thông tin IP\n"
-        "/tiktok <link> - Tải video/ảnh TikTok chất lượng cao"
+        "/tiktok <link> - Tải video/ảnh TikTok chất lượng cao\n"
+        "/yt <link YouTube> - Tải video YouTube (bao gồm YouTube Shorts)"
     )
 
 # ==== Check IP ====
@@ -119,7 +121,36 @@ async def download_tiktok(update, context):
     except Exception as e:
         await waiting_msg.edit_text(f"⚠️ Lỗi khi tải TikTok: {e}")
 
-# ==== Welcome New Member ====
+# ==== YouTube Video Downloader ====
+async def download_youtube(update, context):
+    if not context.args:
+        await update.message.reply_text("👉 Dùng: /yt <link video YouTube>")
+        return
+
+    link = context.args[0].strip()
+    waiting_msg = await update.message.reply_text("⏳ Đang tải video từ YouTube, vui lòng chờ...")
+
+    try:
+        ydl_opts = {
+            'format': 'best',  # Tải video chất lượng tốt nhất
+            'outtmpl': 'downloads/%(id)s.%(ext)s',  # Đường dẫn lưu video
+            'quiet': True,  # Tắt các thông báo không cần thiết
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info_dict = ydl.extract_info(link, download=True)
+            video_url = info_dict['url']  # Lấy URL video tải về
+
+        await waiting_msg.edit_text(f"✅ Video tải về thành công!")
+        with open(f"downloads/{info_dict['id']}.mp4", "rb") as video_file:
+            await update.message.reply_video(video_file, caption=f"🎬 Video YouTube: {info_dict['title']}")
+        
+        os.remove(f"downloads/{info_dict['id']}.mp4")  # Xoá video sau khi gửi
+
+    except Exception as e:
+        await waiting_msg.edit_text(f"⚠️ Lỗi khi tải video YouTube: {e}")
+
+# ==== Welcome New Member ==== 
 async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for member in update.message.new_chat_members:
         await update.message.reply_text(
@@ -135,6 +166,7 @@ def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("ip", check_ip))
     app.add_handler(CommandHandler("tiktok", download_tiktok))
+    app.add_handler(CommandHandler("yt", download_youtube))  # Tải video YouTube
 
     # Welcome new members
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
