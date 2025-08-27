@@ -1,16 +1,11 @@
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler
 import requests
 import os
-from uuid import uuid4
 
 TOKEN = os.environ.get("TOKEN")
 
-# Cache tạm thời cho các URL (tránh callback_data quá dài)
-CACHE = {}
-
 TIKWM_API = "https://www.tikwm.com/api/"
-TIKWM_HEADERS = {
+HEADERS = {
     "User-Agent": "Mozilla/5.0",
     "Referer": "https://www.tikwm.com/"
 }
@@ -34,7 +29,7 @@ async def help_command(update, context):
         "/start - Bắt đầu\n"
         "/help - Trợ giúp\n"
         "/ip <địa chỉ ip> - Kiểm tra thông tin IP\n"
-        "/tiktok <link> - Tải video/ảnh TikTok"
+        "/tiktok <link> - Tải video/ảnh TikTok chất lượng cao"
     )
 
 # ==== Check IP ====
@@ -62,7 +57,6 @@ def get_ip_info(ip):
         return None, f"⚠️ Lỗi khi kiểm tra IP: {e}"
 
 async def check_ip(update, context):
-    # Xoá tin nhắn user (nếu không được thì bỏ qua)
     try:
         await update.message.delete()
     except:
@@ -79,24 +73,22 @@ async def check_ip(update, context):
     else:
         await update.message.reply_text(info)
 
-# ==== TikTok Downloader ====
+# ==== TikTok Downloader (auto tải chất lượng cao nhất) ====
 async def download_tiktok(update, context):
-    # Xoá tin nhắn user
     try:
         await update.message.delete()
     except:
         pass
 
     if not context.args:
-        await update.message.reply_text("👉 Dùng: /tiktok <link video TikTok>")
+        await update.message.reply_text("👉 Dùng: /tiktok <link TikTok>")
         return
 
     link = context.args[0].strip()
     waiting_msg = await update.message.reply_text("⏳ Đang xử lý link TikTok, vui lòng chờ...")
 
     try:
-        # Gọi API
-        res = requests.post(TIKWM_API, data={"url": link}, headers=TIKWM_HEADERS, timeout=20)
+        res = requests.post(TIKWM_API, data={"url": link}, headers=HEADERS, timeout=20)
         data_json = res.json()
 
         if data_json.get("code") != 0 or "data" not in data_json:
@@ -106,68 +98,23 @@ async def download_tiktok(update, context):
         data = data_json["data"]
         title = data.get("title", "TikTok")
 
-        # Là VIDEO
-        if data.get("play"):
-            buttons = []
+        # Nếu là video
+        if data.get("hdplay") or data.get("play"):
+            url = data.get("hdplay") or data.get("play")
+            await waiting_msg.delete()
+            await update.message.reply_video(url, caption=f"🎬 {title} (chất lượng cao nhất)")
 
-            # Helper tạo nút + cache token
-            def add_button(label, ftype, url):
-                token = uuid4().hex[:16]
-                CACHE[token] = {"type": ftype, "url": url}
-                buttons.append([InlineKeyboardButton(label, callback_data=token)])
-
-            # 480p (play) luôn có
-            add_button("📹 480p", "video", data["play"])
-
-            # 1080p (hdplay) nếu có
-            if data.get("hdplay"):
-                add_button("📹 1080p", "video", data["hdplay"])
-
-            # Audio nếu có
-            if data.get("music"):
-                add_button("🎵 Audio (MP3)", "audio", data["music"])
-
-            reply_markup = InlineKeyboardMarkup(buttons)
-            await waiting_msg.edit_text(f"🎬 {title}\n\nChọn chất lượng tải:", reply_markup=reply_markup)
-
-        # Là BÀI ẢNH
+        # Nếu là bài ảnh
         elif data.get("images"):
             await waiting_msg.edit_text(f"🖼 {title}\n\nĐang gửi ảnh gốc...")
             for img_url in data["images"]:
                 await update.message.reply_photo(img_url)
 
         else:
-            await waiting_msg.edit_text("⚠️ Không nhận diện được video/ảnh từ link này.")
+            await waiting_msg.edit_text("⚠️ Không tìm thấy video/ảnh trong link này.")
 
     except Exception as e:
-        # Trường hợp JSON lỗi hoặc bị chặn Cloudflare
-        try:
-            await waiting_msg.edit_text(f"⚠️ Lỗi khi tải TikTok: {e}")
-        except:
-            pass
-
-# ==== Xử lý khi bấm nút chọn chất lượng ====
-async def button(update, context):
-    query = update.callback_query
-    await query.answer()
-
-    token = query.data
-    payload = CACHE.get(token)
-
-    if not payload:
-        await query.message.reply_text("⏰ Nút đã hết hạn, vui lòng dùng lại /tiktok với link đó.")
-        return
-
-    filetype = payload["type"]
-    url = payload["url"]
-
-    try:
-        if filetype == "audio":
-            await query.message.reply_audio(url, caption="🎵 Nhạc gốc TikTok")
-        elif filetype == "video":
-            await query.message.reply_video(url, caption="🎬 Video TikTok")
-    except Exception as e:
-        await query.message.reply_text(f"⚠️ Lỗi khi gửi file: {e}")
+        await waiting_msg.edit_text(f"⚠️ Lỗi khi tải TikTok: {e}")
 
 # ==== Main ====
 def main():
@@ -177,7 +124,6 @@ def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("ip", check_ip))
     app.add_handler(CommandHandler("tiktok", download_tiktok))
-    app.add_handler(CallbackQueryHandler(button))
 
     print("🤖 Bot đang chạy...")
     app.run_polling()
