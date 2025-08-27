@@ -1,4 +1,5 @@
-from telegram.ext import Application, CommandHandler
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import requests
 import os
 
@@ -8,12 +9,12 @@ TOKEN = os.environ.get("TOKEN")   # Token bot Telegram (set trên Railway)
 async def start(update, context):
     await update.message.reply_text(
         "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
-        "🤖 Đây là công cụ hỗ trợ tra cứu thông tin IP và tải video TikTok nhanh chóng.\n\n"
+        "🤖 Công cụ tra cứu IP & tải TikTok video/ảnh chất lượng cao.\n\n"
         "📌 Các thành viên phát triển BOT:\n"
         "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
         "   👤 Telegram Support – @Telegram\n"
         "   🤖 Bot chính thức – @ToMinhDiem_bot\n\n"
-        "💡 Gõ /help để xem danh sách lệnh khả dụng."
+        "💡 Gõ /help để xem lệnh khả dụng."
     )
 
 # ==== /help ====
@@ -23,7 +24,7 @@ async def help_command(update, context):
         "/start - Bắt đầu\n"
         "/help - Trợ giúp\n"
         "/ip <địa chỉ ip> - Kiểm tra thông tin IP\n"
-        "/tiktok <link> - Tải video TikTok (không logo)"
+        "/tiktok <link> - Tải video/ảnh TikTok"
     )
 
 # ==== Check IP ====
@@ -51,6 +52,12 @@ def get_ip_info(ip):
         return None, f"⚠️ Lỗi khi kiểm tra IP: {e}"
 
 async def check_ip(update, context):
+    # Xoá tin nhắn user sau khi nhập lệnh
+    try:
+        await update.message.delete()
+    except:
+        pass
+
     if not context.args:
         await update.message.reply_text("👉 Dùng: /ip 8.8.8.8")
         return
@@ -61,28 +68,70 @@ async def check_ip(update, context):
     else:
         await update.message.reply_text(info)
 
-# ==== Download TikTok Video ====
+# ==== Download TikTok ====
 async def download_tiktok(update, context):
+    # Xoá tin nhắn user sau khi nhập lệnh
+    try:
+        await update.message.delete()
+    except:
+        pass
+
     if not context.args:
         await update.message.reply_text("👉 Dùng: /tiktok <link video TikTok>")
         return
 
     link = context.args[0]
+
+    # Gửi thông báo đang xử lý
+    waiting_msg = await update.message.reply_text("⏳ Đang xử lý link TikTok, vui lòng chờ...")
+
     try:
         api = "https://www.tikwm.com/api/"
         res = requests.post(api, data={"url": link}).json()
 
         if res.get("code") != 0:
-            await update.message.reply_text("❌ Không tải được video TikTok. Kiểm tra lại link!")
+            await waiting_msg.edit_text("❌ Không tải được TikTok. Kiểm tra lại link!")
             return
 
-        video_url = res["data"]["play"]   # Link video không logo
-        title = res["data"].get("title", "TikTok video")
+        data = res["data"]
+        title = data.get("title", "TikTok video")
 
-        await update.message.reply_video(video_url, caption=f"🎬 {title}")
+        # Nếu là video
+        if "play" in data:
+            keyboard = [
+                [InlineKeyboardButton("📹 480p", callback_data=f"480|{data['play']}")],
+                [InlineKeyboardButton("📹 1080p", callback_data=f"1080|{data['hdplay']}")],
+                [InlineKeyboardButton("🎵 Audio (MP3)", callback_data=f"audio|{data['music']}")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await waiting_msg.edit_text(
+                f"🎬 {title}\n\nChọn chất lượng tải:",
+                reply_markup=reply_markup
+            )
+
+        # Nếu là ảnh
+        elif "images" in data:
+            await waiting_msg.edit_text(f"🖼 {title}\n\nĐang gửi ảnh gốc...")
+            for img_url in data["images"]:
+                await update.message.reply_photo(img_url)
 
     except Exception as e:
-        await update.message.reply_text(f"⚠️ Lỗi khi tải video TikTok: {e}")
+        await waiting_msg.edit_text(f"⚠️ Lỗi khi tải TikTok: {e}")
+
+# ==== Handle chọn chất lượng ====
+async def button(update, context):
+    query = update.callback_query
+    await query.answer()
+
+    try:
+        quality, url = query.data.split("|", 1)
+        if quality == "audio":
+            await query.message.reply_audio(url, caption="🎵 Nhạc gốc TikTok")
+        else:
+            await query.message.reply_video(url, caption=f"🎬 Video TikTok {quality}")
+    except Exception as e:
+        await query.message.reply_text(f"⚠️ Lỗi khi gửi video: {e}")
 
 # ==== Main ====
 def main():
@@ -92,6 +141,7 @@ def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("ip", check_ip))
     app.add_handler(CommandHandler("tiktok", download_tiktok))
+    app.add_handler(CallbackQueryHandler(button))
 
     print("🤖 Bot đang chạy...")
     app.run_polling()
