@@ -3,18 +3,17 @@ import requests
 import os
 
 TOKEN = os.environ.get("TOKEN")   # Token bot Telegram (set trên Railway)
-YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")  # API key của YouTube Data API v3
 
 # ==== /start ====
 async def start(update, context):
     await update.message.reply_text(
         "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
-        "🤖 Đây là công cụ hỗ trợ tra cứu thông tin IP, YouTube, TikTok nhanh chóng và chính xác.\n\n"
-        "📌 Bot được phát triển và duy trì bởi đội ngũ:\n"
+        "🤖 Đây là công cụ hỗ trợ tra cứu thông tin IP và tải video TikTok nhanh chóng.\n\n"
+        "📌 Các thành viên phát triển BOT:\n"
         "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
         "   👤 Telegram Support – @Telegram\n"
         "   🤖 Bot chính thức – @ToMinhDiem_bot\n\n"
-        "💡 Gõ /help để xem các lệnh khả dụng."
+        "💡 Gõ /help để xem danh sách lệnh khả dụng."
     )
 
 # ==== /help ====
@@ -24,8 +23,7 @@ async def help_command(update, context):
         "/start - Bắt đầu\n"
         "/help - Trợ giúp\n"
         "/ip <địa chỉ ip> - Kiểm tra thông tin IP\n"
-        "/yt <channel_id hoặc username> - Lấy thông tin YouTube\n"
-        "/tiktok <username> - Lấy thông tin TikTok"
+        "/tiktok <link> - Tải video TikTok (không logo)"
     )
 
 # ==== Check IP ====
@@ -63,54 +61,28 @@ async def check_ip(update, context):
     else:
         await update.message.reply_text(info)
 
-# ==== Check YouTube ====
-async def check_yt(update, context):
+# ==== Download TikTok Video ====
+async def download_tiktok(update, context):
     if not context.args:
-        await update.message.reply_text("👉 Dùng: /yt <channel_id hoặc username>")
+        await update.message.reply_text("👉 Dùng: /tiktok <link video TikTok>")
         return
 
-    channel_id = context.args[0]
-
+    link = context.args[0]
     try:
-        url = f"https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id={channel_id}&key={YOUTUBE_API_KEY}"
-        res = requests.get(url).json()
+        api = "https://www.tikwm.com/api/"
+        res = requests.post(api, data={"url": link}).json()
 
-        if "items" not in res or not res["items"]:
-            await update.message.reply_text("❌ Không tìm thấy kênh YouTube này.")
+        if res.get("code") != 0:
+            await update.message.reply_text("❌ Không tải được video TikTok. Kiểm tra lại link!")
             return
 
-        data = res["items"][0]
-        snippet = data["snippet"]
-        stats = data["statistics"]
+        video_url = res["data"]["play"]   # Link video không logo
+        title = res["data"].get("title", "TikTok video")
 
-        msg = (
-            f"📺 Kênh: {snippet['title']}\n"
-            f"🆔 ID: {data['id']}\n"
-            f"📅 Ngày tạo: {snippet['publishedAt']}\n"
-            f"👥 Người đăng ký: {stats.get('subscriberCount', 'Ẩn')}\n"
-            f"▶️ Tổng lượt xem: {stats.get('viewCount', '0')}\n"
-            f"🎥 Tổng video: {stats.get('videoCount', '0')}"
-        )
-
-        await update.message.reply_photo(snippet["thumbnails"]["high"]["url"], caption=msg)
+        await update.message.reply_video(video_url, caption=f"🎬 {title}")
 
     except Exception as e:
-        await update.message.reply_text(f"⚠️ Lỗi khi gọi YouTube API: {e}")
-
-# ==== Check TikTok (demo API public, hạn chế) ====
-async def check_tiktok(update, context):
-    if not context.args:
-        await update.message.reply_text("👉 Dùng: /tiktok <username>")
-        return
-
-    username = context.args[0].replace("@", "")
-
-    try:
-        url = f"https://www.tiktok.com/@{username}?lang=en"
-        msg = f"📱 Tạm thời chỉ hỗ trợ lấy thông tin cơ bản.\n👉 Link TikTok: https://www.tiktok.com/@{username}"
-        await update.message.reply_text(msg)
-    except Exception as e:
-        await update.message.reply_text(f"⚠️ Lỗi khi lấy thông tin TikTok: {e}")
+        await update.message.reply_text(f"⚠️ Lỗi khi tải video TikTok: {e}")
 
 # ==== Main ====
 def main():
@@ -119,8 +91,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("ip", check_ip))
-    app.add_handler(CommandHandler("yt", check_yt))
-    app.add_handler(CommandHandler("tiktok", check_tiktok))
+    app.add_handler(CommandHandler("tiktok", download_tiktok))
 
     print("🤖 Bot đang chạy...")
     app.run_polling()
