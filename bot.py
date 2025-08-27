@@ -3,7 +3,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import requests
 import os
 
-TOKEN = os.environ.get("TOKEN")   # Token bot Telegram (set trên Railway)
+TOKEN = os.environ.get("TOKEN")
 
 # ==== /start ====
 async def start(update, context):
@@ -52,7 +52,6 @@ def get_ip_info(ip):
         return None, f"⚠️ Lỗi khi kiểm tra IP: {e}"
 
 async def check_ip(update, context):
-    # Xoá tin nhắn user sau khi nhập lệnh
     try:
         await update.message.delete()
     except:
@@ -70,7 +69,6 @@ async def check_ip(update, context):
 
 # ==== Download TikTok ====
 async def download_tiktok(update, context):
-    # Xoá tin nhắn user sau khi nhập lệnh
     try:
         await update.message.delete()
     except:
@@ -81,8 +79,6 @@ async def download_tiktok(update, context):
         return
 
     link = context.args[0]
-
-    # Gửi thông báo đang xử lý
     waiting_msg = await update.message.reply_text("⏳ Đang xử lý link TikTok, vui lòng chờ...")
 
     try:
@@ -96,25 +92,30 @@ async def download_tiktok(update, context):
         data = res["data"]
         title = data.get("title", "TikTok video")
 
-        # Nếu là video
+        # Nếu có video
         if "play" in data:
             keyboard = [
-                [InlineKeyboardButton("📹 480p", callback_data=f"480|{data['play']}")],
-                [InlineKeyboardButton("📹 1080p", callback_data=f"1080|{data['hdplay']}")],
-                [InlineKeyboardButton("🎵 Audio (MP3)", callback_data=f"audio|{data['music']}")]
+                [InlineKeyboardButton("📹 480p", callback_data=f"video|{data['play']}")]
             ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
+            if data.get("hdplay"):
+                keyboard.append([InlineKeyboardButton("📹 1080p", callback_data=f"video|{data['hdplay']}")])
+            if data.get("music"):
+                keyboard.append([InlineKeyboardButton("🎵 Audio", callback_data=f"audio|{data['music']}")])
 
+            reply_markup = InlineKeyboardMarkup(keyboard)
             await waiting_msg.edit_text(
                 f"🎬 {title}\n\nChọn chất lượng tải:",
                 reply_markup=reply_markup
             )
 
         # Nếu là ảnh
-        elif "images" in data:
+        elif "images" in data and data["images"]:
             await waiting_msg.edit_text(f"🖼 {title}\n\nĐang gửi ảnh gốc...")
             for img_url in data["images"]:
                 await update.message.reply_photo(img_url)
+
+        else:
+            await waiting_msg.edit_text("⚠️ Không nhận diện được video/ảnh từ link này.")
 
     except Exception as e:
         await waiting_msg.edit_text(f"⚠️ Lỗi khi tải TikTok: {e}")
@@ -125,13 +126,13 @@ async def button(update, context):
     await query.answer()
 
     try:
-        quality, url = query.data.split("|", 1)
-        if quality == "audio":
+        filetype, url = query.data.split("|", 1)
+        if filetype == "audio":
             await query.message.reply_audio(url, caption="🎵 Nhạc gốc TikTok")
-        else:
-            await query.message.reply_video(url, caption=f"🎬 Video TikTok {quality}")
+        elif filetype == "video":
+            await query.message.reply_video(url, caption="🎬 Video TikTok")
     except Exception as e:
-        await query.message.reply_text(f"⚠️ Lỗi khi gửi video: {e}")
+        await query.message.reply_text(f"⚠️ Lỗi khi gửi file: {e}")
 
 # ==== Main ====
 def main():
