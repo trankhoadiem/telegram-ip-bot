@@ -8,7 +8,7 @@ YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")  # API key của YouTube Dat
 # ==== /start ====
 async def start(update, context):
     await update.message.reply_text(
-        "✨ **Chào mừng bạn đến với BOT đa năng** ✨\n\n"
+        "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
         "🤖 Đây là công cụ hỗ trợ tra cứu thông tin IP, YouTube, TikTok nhanh chóng và chính xác.\n\n"
         "📌 Bot được phát triển và duy trì bởi đội ngũ:\n"
         "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
