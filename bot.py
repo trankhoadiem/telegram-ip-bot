@@ -1,7 +1,9 @@
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import requests
+import yt_dlp
 import os
+import soundcloud
 
 # ==== TOKEN ====
 TOKEN = os.environ.get("TOKEN")
@@ -13,68 +15,56 @@ HEADERS = {
     "Referer": "https://www.tikwm.com/"
 }
 
+# ==== SoundCloud API ====
+SC_CLIENT_ID = 'YOUR_SOUNDCLOUD_CLIENT_ID'  # Đăng ký API key từ SoundCloud
+
 # ==== /start ====
-async def start(update, context):
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
-        "🤖 Công cụ tra cứu IP & tải TikTok video/ảnh chất lượng cao.\n\n"
+        "🤖 Công cụ tra cứu IP & tải YouTube/TikTok video/ảnh chất lượng cao.\n\n"
         "📌 Các thành viên phát triển BOT:\n"
-        "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
-        "   👤 Telegram Support – @Telegram\n"
-        "   🤖 Bot chính thức – @ToMinhDiem_bot\n\n"
+        " 👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
+        " 👤 Telegram Support – @Telegram\n"
+        " 🤖 Bot chính thức – @ToMinhDiem_bot\n\n"
         "💡 Gõ /help để xem lệnh khả dụng."
     )
 
 # ==== /help ====
-async def help_command(update, context):
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "📖 Lệnh có sẵn:\n\n"
         "/start - Bắt đầu\n"
         "/help - Trợ giúp\n"
         "/ip <địa chỉ ip> - Kiểm tra thông tin IP\n"
-        "/tiktok <link> - Tải video/ảnh TikTok chất lượng cao"
+        "/tiktok <link> - Tải video/ảnh TikTok\n"
+        "/sc <link> - Tải âm thanh SoundCloud"
     )
 
-# ==== Check IP ====
-def get_ip_info(ip):
-    try:
-        url = f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query"
-        res = requests.get(url, timeout=15).json()
-
-        if res.get("status") == "fail":
-            return None, f"❌ Không tìm thấy thông tin cho IP: {ip}"
-
-        info = (
-            f"🌍 Thông tin IP {res['query']}:\n"
-            f"🗺 Quốc gia: {res['country']} ({res['countryCode']})\n"
-            f"🏙 Khu vực: {res['regionName']} - {res['city']} ({res.get('zip','')})\n"
-            f"🕒 Múi giờ: {res['timezone']}\n"
-            f"📍 Toạ độ: {res['lat']}, {res['lon']}\n"
-            f"📡 ISP: {res['isp']}\n"
-            f"🏢 Tổ chức: {res['org']}\n"
-            f"🔗 AS: {res['as']}"
-        )
-        flag_url = f"https://flagcdn.com/w320/{res['countryCode'].lower()}.png"
-        return flag_url, info
-    except Exception as e:
-        return None, f"⚠️ Lỗi khi kiểm tra IP: {e}"
-
-async def check_ip(update, context):
-    try:
-        await update.message.delete()
-    except:
-        pass
-
+# ==== SoundCloud Downloader ====
+async def download_soundcloud(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text("👉 Dùng: /ip 8.8.8.8")
+        await update.message.reply_text("👉 Dùng: /sc <link SoundCloud>")
         return
-
-    ip = context.args[0].strip()
-    flag_url, info = get_ip_info(ip)
-    if flag_url:
-        await update.message.reply_photo(flag_url, caption=info)
-    else:
-        await update.message.reply_text(info)
+    link = context.args[0].strip()
+    waiting_msg = await update.message.reply_text("⏳ Đang xử lý link SoundCloud, vui lòng chờ...")
+    
+    try:
+        # Khởi tạo client SoundCloud
+        client = soundcloud.Client(client_id=SC_CLIENT_ID)
+        
+        # Lấy track từ link SoundCloud
+        track = client.get('/resolve', url=link)
+        
+        if track:
+            await waiting_msg.edit_text(f"🎵 Đang tải nhạc: {track.title}")
+            stream_url = track.stream_url
+            audio_url = f"{stream_url}?client_id={SC_CLIENT_ID}"
+            await update.message.reply_audio(audio_url, caption=f"🎶 {track.title}")
+        else:
+            await waiting_msg.edit_text("❌ Không tải được từ SoundCloud, vui lòng kiểm tra lại link.")
+    except Exception as e:
+        await waiting_msg.edit_text(f"⚠️ Lỗi khi tải từ SoundCloud: {e}")
 
 # ==== TikTok Downloader ====
 async def download_tiktok(update, context):
@@ -119,13 +109,6 @@ async def download_tiktok(update, context):
     except Exception as e:
         await waiting_msg.edit_text(f"⚠️ Lỗi khi tải TikTok: {e}")
 
-# ==== Welcome New Member ====
-async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    for member in update.message.new_chat_members:
-        await update.message.reply_text(
-            f"🎉 Chào mừng {member.full_name} đã tham gia nhóm {update.message.chat.title}!"
-        )
-
 # ==== Main ====
 def main():
     app = Application.builder().token(TOKEN).build()
@@ -135,11 +118,9 @@ def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("ip", check_ip))
     app.add_handler(CommandHandler("tiktok", download_tiktok))
+    app.add_handler(CommandHandler("sc", download_soundcloud))
 
-    # Welcome new members
-    app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
-
-    print("🤖 Bot đang chạy...")
+    # Run the bot
     app.run_polling()
 
 if __name__ == "__main__":
