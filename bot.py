@@ -30,17 +30,21 @@ HEADERS = {"User-Agent": "Mozilla/5.0", "Referer": "https://www.tikwm.com/"}
 async def ai_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["ai_mode"] = None
     await update.message.reply_text(
-        "🤖 Đã bật **Chế độ AI**\n\n"
-        "👉 Chọn model để trò chuyện:\n"
-        "🧠 /gpt - ChatGPT\n"
-        "🦉 /grok - Grok\n"
-        "🌌 /gemini - Gemini\n"
-        "❌ /exit - Thoát chế độ AI"
+        "🤖 **Chế độ AI đã được bật**\n\n"
+        "Trong chế độ này, bạn có thể trò chuyện với các mô hình AI khác nhau:\n"
+        "🧠 /gpt - Sử dụng ChatGPT (OpenAI)\n"
+        "🦉 /grok - Sử dụng Grok (xAI)\n"
+        "🌌 /gemini - Sử dụng Gemini (Google)\n\n"
+        "👉 Sau khi chọn model, bạn chỉ cần gõ tin nhắn là AI sẽ trả lời.\n"
+        "❌ Dùng lệnh /exit để thoát khỏi chế độ AI."
     )
 
 async def exit_ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["ai_mode"] = None
-    await update.message.reply_text("✅ Bạn đã thoát khỏi **Chế độ AI**.")
+    await update.message.reply_text(
+        "✅ Bạn đã thoát khỏi **Chế độ AI**.\n\n"
+        "👉 Nếu muốn bật lại, gõ /ai và chọn model."
+    )
 
 # chọn model
 async def gpt(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -216,17 +220,26 @@ async def start(update, context):
 
 async def help_command(update, context):
     await update.message.reply_text(
-        "📖 **Danh sách lệnh khả dụng**:\n\n"
-        "🚀 /start - Bắt đầu\n"
-        "🛠 /help - Trợ giúp\n"
-        "🤖 /ai - Bật Chế độ AI\n"
-        "🌐 /ip <ip> - Kiểm tra IP\n"
-        "🎬 /tiktok <link> - Tải TikTok\n"
-        "🔧 /testapi - Kiểm tra API keys\n\n"
-        "🔒 Admin:\n"
-        "🛑 /shutdown\n"
-        "♻️ /restart\n"
-        "✅ /startbot"
+        "📖 **Hướng dẫn sử dụng BOT chi tiết** 📖\n\n"
+        "✨ Bot hỗ trợ nhiều tính năng tiện ích và AI thông minh:\n\n"
+        "🔹 /start - Giới thiệu bot và thông tin cơ bản.\n"
+        "🔹 /help - Hiển thị danh sách lệnh kèm mô tả chi tiết.\n\n"
+        "🤖 **Chế độ AI**:\n"
+        "   • /ai - Bật chế độ AI và chọn model để trò chuyện.\n"
+        "   • /gpt - Dùng ChatGPT để hỏi đáp, hỗ trợ thông minh.\n"
+        "   • /grok - Dùng Grok (xAI), phong cách khác biệt hơn.\n"
+        "   • /gemini - Dùng Gemini (Google), phản hồi nhanh và súc tích.\n"
+        "   • /exit - Thoát khỏi chế độ AI.\n\n"
+        "🌐 **Công cụ khác**:\n"
+        "   • /ip <ip> - Kiểm tra thông tin chi tiết của một địa chỉ IP.\n"
+        "   • /tiktok <link> - Tải video/ảnh TikTok không watermark.\n"
+        "   • /testapi - Kiểm tra trạng thái các API key (GPT, Grok, Gemini).\n\n"
+        "🔒 **Lệnh Admin**:\n"
+        "   • /shutdown - Tắt bot.\n"
+        "   • /restart - Khởi động lại bot.\n"
+        "   • /startbot - Kiểm tra bot đang chạy.\n\n"
+        "💡 Lưu ý: Một số lệnh yêu cầu bạn phải nhập đúng cú pháp để bot hiểu.\n"
+        "👉 Hãy thử ngay bằng cách gõ /ai và chọn mô hình AI yêu thích!"
     )
 
 def get_ip_info(ip):
