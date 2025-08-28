@@ -15,8 +15,26 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "✨ Chào mừng bạn đến với bot AI Chat! ✨\n\n"
         "🤖 Hỏi gì, bot trả lời đó như ChatGPT.\n"
-        "💡 Gõ câu hỏi và bot sẽ trả lời tự động."
+        "💡 Gõ câu hỏi và bot sẽ trả lời tự động.\n"
+        "🛠 Dùng lệnh /testapi để kiểm tra kết nối với OpenAI API."
     )
+
+# ==== /testapi Command ====
+async def test_api(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        # Gửi yêu cầu đơn giản đến OpenAI API để kiểm tra kết nối
+        response = openai.Completion.create(
+            model="gpt-3.5-turbo",  # Hoặc gpt-4 nếu bạn có quyền truy cập
+            prompt="Hello",
+            max_tokens=5
+        )
+        
+        if response:
+            await update.message.reply_text("✅ API OpenAI kết nối thành công!")
+        else:
+            await update.message.reply_text("⚠️ Không thể kết nối tới API OpenAI. Vui lòng kiểm tra lại.")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Lỗi khi kết nối API: {e}")
 
 # ==== Xử lý tin nhắn người dùng ====
 async def chat_gpt(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -47,6 +65,7 @@ def main():
 
     # Command
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("testapi", test_api))  # Thêm handler cho lệnh /testapi
 
     # Message Handler: Xử lý tất cả tin nhắn và trả lời bằng GPT
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat_gpt))
