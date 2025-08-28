@@ -171,18 +171,23 @@ async def start(update, context):
 
 async def help_command(update, context):
     await update.message.reply_text(
-        "📖 **Danh sách lệnh khả dụng**:\n\n"
-        "🚀 /start - Bắt đầu\n"
-        "🛠 /help - Trợ giúp chi tiết\n"
-        "🤖 /gemini - Bật chế độ AI Gemini\n"
-        "❌ /exit - Thoát chế độ AI\n"
-        "🌐 /ip <ip> - Kiểm tra IP\n"
-        "🎬 /tiktok <link> - Tải TikTok\n"
-        "🔧 /testapi - Kiểm tra API Gemini\n\n"
-        "🔒 Admin:\n"
-        "🛑 /shutdown - Tắt bot\n"
-        "♻️ /restart - Khởi động lại bot\n"
-        "✅ /startbot - Kiểm tra bot"
+        "📖 **Hướng dẫn sử dụng BOT chi tiết** 📖\n\n"
+        "✨ Bot hỗ trợ nhiều tính năng tiện ích và AI thông minh:\n\n"
+        "🔹 /start - Giới thiệu bot và thông tin cơ bản.\n"
+        "🔹 /help - Hiển thị danh sách lệnh kèm mô tả chi tiết.\n\n"
+        "🤖 **Chế độ AI**:\n"
+        "   • /gemini - Bật chế độ AI Gemini, phản hồi nhanh và súc tích.\n"
+        "   • /exit - Thoát khỏi chế độ AI Gemini.\n\n"
+        "🌐 **Công cụ khác**:\n"
+        "   • /ip <ip> - Kiểm tra thông tin chi tiết của một địa chỉ IP.\n"
+        "   • /tiktok <link> - Tải video/ảnh TikTok không watermark.\n"
+        "   • /testapi - Kiểm tra trạng thái API Gemini.\n\n"
+        "🔒 **Lệnh Admin**:\n"
+        "   • /shutdown - Tắt bot.\n"
+        "   • /restart - Khởi động lại bot.\n"
+        "   • /startbot - Kiểm tra bot đang chạy.\n\n"
+        "💡 Lưu ý: Một số lệnh yêu cầu bạn phải nhập đúng cú pháp để bot hiểu.\n"
+        "👉 Hãy thử ngay bằng cách gõ /gemini để trò chuyện với AI!"
     )
 
 # ==== MAIN ====
