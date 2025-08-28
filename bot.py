@@ -11,6 +11,13 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 XAI_API_KEY = os.environ.get("XAI_API_KEY")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
+# ==== ADMIN ====
+ADMIN_USERNAME = "DuRinn_LeTuanDiem"   # check bằng username
+
+def is_admin(update: Update):
+    user = update.effective_user
+    return user and user.username == ADMIN_USERNAME
+
 # ==== TikTok API ====
 TIKWM_API = "https://www.tikwm.com/api/"
 HEADERS = {
@@ -90,6 +97,30 @@ async def handle_ai_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(reply)
 
 # =======================
+# 🚀 Admin Commands
+# =======================
+async def shutdown(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update):
+        await update.message.reply_text("⛔ Bạn không có quyền dùng lệnh này.")
+        return
+    await update.message.reply_text("🛑 Bot đang tắt...")
+    await context.application.stop()
+
+async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update):
+        await update.message.reply_text("⛔ Bạn không có quyền dùng lệnh này.")
+        return
+    await update.message.reply_text("♻️ Bot đang khởi động lại...")
+    await context.application.stop()
+    # Thực tế restart cần systemd/pm2/docker, ở đây chỉ stop
+
+async def startbot(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update):
+        await update.message.reply_text("⛔ Bạn không có quyền dùng lệnh này.")
+        return
+    await update.message.reply_text("✅ Bot đang chạy bình thường!")
+
+# =======================
 # 🚀 Các lệnh khác
 # =======================
 
@@ -100,7 +131,6 @@ async def start(update, context):
         "🤖 Công cụ tra cứu IP, tải TikTok video/ảnh chất lượng cao & chat AI (GPT, Grok, Gemini).\n\n"
         "⚡ Bot vẫn đang **cập nhật hằng ngày**, nên có thể sẽ tồn tại một số lỗi trong quá trình sử dụng.\n\n"
         "📌 Các thành viên phát triển BOT:\n"
-        "   👤 Vương Quốc Anh\n"
         "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
         "   👤 Telegram Support – @Telegram\n"
         "   🤖 Bot chính thức – @ToMinhDiem_bot\n\n"
@@ -115,7 +145,11 @@ async def help_command(update, context):
         "/help - Trợ giúp\n"
         "/ai - Chế độ AI (GPT, Grok, Gemini)\n"
         "/ip <ip> - Kiểm tra IP\n"
-        "/tiktok <link> - Tải TikTok"
+        "/tiktok <link> - Tải TikTok\n\n"
+        "🔒 Lệnh dành cho Admin: @DuRinn_LeTuanDiem\n"
+        "/shutdown - Tắt bot\n"
+        "/restart - Khởi động lại bot\n"
+        "/startbot - Kiểm tra/bật bot"
     )
 
 # IP lookup
@@ -205,6 +239,11 @@ def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("ip", check_ip))
     app.add_handler(CommandHandler("tiktok", download_tiktok))
+
+    # Admin
+    app.add_handler(CommandHandler("shutdown", shutdown))
+    app.add_handler(CommandHandler("restart", restart))
+    app.add_handler(CommandHandler("startbot", startbot))
 
     # Welcome new members
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
