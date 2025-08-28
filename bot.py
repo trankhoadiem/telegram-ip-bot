@@ -18,12 +18,12 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text  # Câu hỏi người dùng gửi
     try:
         # Gọi OpenAI API để nhận câu trả lời với cách gọi mới
-        response = openai.ChatCompletion.create(
+        response = openai.completions.create(
             model="gpt-3.5-turbo",  # Bạn có thể thay đổi model nếu cần
-            messages=[{"role": "user", "content": user_message}],
+            prompt=user_message,
             max_tokens=150
         )
-        answer = response['choices'][0]['message']['content'].strip()  # Lấy câu trả lời từ GPT-3
+        answer = response['choices'][0]['text'].strip()  # Lấy câu trả lời từ GPT-3
         await update.message.reply_text(answer)
     
     except Exception as e:
