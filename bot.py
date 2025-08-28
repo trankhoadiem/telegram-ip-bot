@@ -20,14 +20,18 @@ def is_admin(update: Update):
 async def gemini_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["ai_mode"] = "gemini"
     await update.message.reply_text(
-        "🌌 **Chế độ Gemini đã được bật**\n"
-        "Bạn chỉ cần gõ tin nhắn, bot sẽ trả lời bằng Google Gemini.\n"
-        "❌ Dùng lệnh /exit để thoát khỏi chế độ AI."
+        "🌌 **Chế độ Gemini đã được bật**\n\n"
+        "Bạn có thể trò chuyện trực tiếp với Google Gemini.\n"
+        "⏳ Bot sẽ trả lời nhanh chóng, bạn chỉ cần gõ tin nhắn.\n"
+        "❌ Dùng lệnh /exit để thoát khỏi chế độ AI Gemini."
     )
 
 async def exit_ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["ai_mode"] = None
-    await update.message.reply_text("✅ Bạn đã thoát khỏi **Chế độ AI Gemini**.")
+    await update.message.reply_text(
+        "✅ Bạn đã thoát khỏi **Chế độ AI Gemini**.\n"
+        "👉 Gõ /gemini để bật lại khi cần."
+    )
 
 async def chat_gemini(query: str) -> str:
     if not GOOGLE_API_KEY:
@@ -155,25 +159,30 @@ async def download_tiktok(update, context):
 # ==== Start & Help ====
 async def start(update, context):
     await update.message.reply_text(
-        "✨ **Chào mừng bạn đến với BOT Gemini** ✨\n"
-        "🌌 Chat AI với Gemini | 🌐 Kiểm tra IP | 🎬 Tải TikTok\n"
-        "💡 Gõ /help để xem lệnh."
+        "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
+        "🤖 Công cụ: 🌌 Chat AI Gemini | 🌐 Kiểm tra IP | 🎬 Tải TikTok\n\n"
+        "⚡ Bot vẫn đang **cập nhật hằng ngày**, có thể tồn tại một số lỗi.\n\n"
+        "📌 Thành viên phát triển BOT:\n"
+        "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
+        "   👤 Telegram Support – @Telegram\n"
+        "   🤖 Bot chính thức – @ToMinhDiem_bot\n\n"
+        "💡 Gõ /help để xem tất cả lệnh khả dụng."
     )
 
 async def help_command(update, context):
     await update.message.reply_text(
-        "📖 **Danh sách lệnh khả dụng** 📖\n\n"
-        "🤖 AI Gemini:\n"
-        "• /gemini - Bật chế độ AI Gemini\n"
-        "• /exit - Thoát khỏi AI Gemini\n\n"
-        "🌐 Công cụ:\n"
-        "• /ip <ip> - Kiểm tra IP\n"
-        "• /tiktok <link> - Tải TikTok\n"
-        "• /testapi - Test API Gemini\n\n"
+        "📖 **Danh sách lệnh khả dụng**:\n\n"
+        "🚀 /start - Bắt đầu\n"
+        "🛠 /help - Trợ giúp chi tiết\n"
+        "🤖 /gemini - Bật chế độ AI Gemini\n"
+        "❌ /exit - Thoát chế độ AI\n"
+        "🌐 /ip <ip> - Kiểm tra IP\n"
+        "🎬 /tiktok <link> - Tải TikTok\n"
+        "🔧 /testapi - Kiểm tra API Gemini\n\n"
         "🔒 Admin:\n"
-        "• /shutdown - Tắt bot\n"
-        "• /restart - Khởi động lại bot\n"
-        "• /startbot - Kiểm tra bot"
+        "🛑 /shutdown - Tắt bot\n"
+        "♻️ /restart - Khởi động lại bot\n"
+        "✅ /startbot - Kiểm tra bot"
     )
 
 # ==== MAIN ====
