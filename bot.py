@@ -1,38 +1,44 @@
+import os
+import openai
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-# ==== TOKEN Telegram ====
-TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"  # Thay YOUR_TELEGRAM_BOT_TOKEN bằng token của bot của bạn
+# Lấy API Key từ biến môi trường (cấu hình trong Railway)
+openai.api_key = os.getenv("OPENAI_API_KEY")  # Sử dụng OPENAI_API_KEY từ Railway
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")  # Sử dụng TELEGRAM_TOKEN từ Railway
 
-# ==== /start Command ====
+# Hàm xử lý /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "✨ Chào mừng bạn đến với Bot Chat! Bạn có thể hỏi tôi bất kỳ câu hỏi nào!"
+        "Chào mừng bạn đến với bot GPT-3!\n\nGửi câu hỏi để tôi trả lời."
     )
 
-# ==== Hàm trả lời câu hỏi đơn giản ====
+# Hàm xử lý tin nhắn
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_message = update.message.text  # Lấy tin nhắn người dùng
+    user_message = update.message.text  # Câu hỏi người dùng gửi
+    try:
+        # Gọi OpenAI API để nhận câu trả lời
+        response = openai.Completion.create(
+            model="text-davinci-003",  # Bạn có thể thay đổi model nếu cần
+            prompt=user_message,
+            max_tokens=150
+        )
+        answer = response.choices[0].text.strip()  # Lấy câu trả lời từ GPT-3
+        await update.message.reply_text(answer)
+    
+    except Exception as e:
+        await update.message.reply_text(f"❌ Lỗi khi kết nối với GPT-3: {e}")
 
-    # Trả lời câu hỏi dựa trên một số mẫu câu
-    if "hello" in user_message.lower():
-        await update.message.reply_text("Chào bạn! Bạn cần giúp gì?")
-    elif "how are you" in user_message.lower():
-        await update.message.reply_text("Tôi rất khỏe, cảm ơn bạn đã hỏi!")
-    elif "bye" in user_message.lower():
-        await update.message.reply_text("Tạm biệt! Hẹn gặp lại bạn sau!")
-    else:
-        await update.message.reply_text("Bạn vừa hỏi: " + user_message)
-
-# ==== Main Function ====
+# Cấu hình bot Telegram
 def main():
-    app = Application.builder().token(TOKEN).build()
+    app = Application.builder().token(TELEGRAM_TOKEN).build()  # Lấy token từ biến môi trường
 
-    # Các lệnh và xử lý tin nhắn
+    # Lệnh start
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))  # Xử lý tất cả các tin nhắn văn bản
 
-    print("🤖 Bot đang chạy...")
+    # Lắng nghe tin nhắn người dùng và trả lời
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
+
     app.run_polling()
 
 if __name__ == "__main__":
