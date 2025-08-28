@@ -16,26 +16,19 @@ def is_admin(update: Update):
     user = update.effective_user
     return user and user.username == ADMIN_USERNAME
 
-# =======================
-# 🚀 Gemini AI
-# =======================
-
+# ==== Gemini AI ====
 async def gemini_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["ai_mode"] = "gemini"
     await update.message.reply_text(
-        "🌌 **Chế độ Gemini đã được bật**\n\n"
+        "🌌 **Chế độ Gemini đã được bật**\n"
         "Bạn chỉ cần gõ tin nhắn, bot sẽ trả lời bằng Google Gemini.\n"
         "❌ Dùng lệnh /exit để thoát khỏi chế độ AI."
     )
 
 async def exit_ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["ai_mode"] = None
-    await update.message.reply_text(
-        "✅ Bạn đã thoát khỏi **Chế độ AI Gemini**.\n"
-        "👉 Nếu muốn bật lại, gõ /gemini."
-    )
+    await update.message.reply_text("✅ Bạn đã thoát khỏi **Chế độ AI Gemini**.")
 
-# ==== Hàm gọi Gemini ====
 async def chat_gemini(query: str) -> str:
     if not GOOGLE_API_KEY:
         return "❌ GEMINI lỗi: Thiếu GOOGLE_API_KEY"
@@ -47,32 +40,27 @@ async def chat_gemini(query: str) -> str:
     except Exception as e:
         return f"⚠️ GEMINI lỗi: {e}"
 
-# xử lý tin nhắn khi đang trong chế độ Gemini
-async def handle_ai_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    mode = context.user_data.get("ai_mode")
-    if mode != "gemini":
+async def handle_gemini_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if context.user_data.get("ai_mode") != "gemini":
         return
-
     query = update.message.text.strip()
     thinking_msg = await update.message.reply_text("⏳ Đang suy nghĩ...")
     reply = await chat_gemini(query)
     await thinking_msg.edit_text(reply)
 
-# =======================
-# 🚀 Admin Commands
-# =======================
+# ==== Admin Commands ====
 async def shutdown(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
         await update.message.reply_text("⛔ Bạn không có quyền dùng lệnh này.")
         return
-    await update.message.reply_text("🛑 Bot đang **tắt**...")
+    await update.message.reply_text("🛑 Bot đang tắt...")
     await context.application.stop()
 
 async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
         await update.message.reply_text("⛔ Bạn không có quyền dùng lệnh này.")
         return
-    await update.message.reply_text("♻️ Bot đang **khởi động lại**...")
+    await update.message.reply_text("♻️ Bot đang khởi động lại...")
     os.execv(sys.executable, ["python"] + sys.argv)
 
 async def startbot(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -81,12 +69,9 @@ async def startbot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await update.message.reply_text("✅ Bot đang chạy bình thường!")
 
-# =======================
-# 🚀 Test API
-# =======================
+# ==== Test API ====
 async def test_api(update: Update, context: ContextTypes.DEFAULT_TYPE):
     results = []
-
     try:
         if not GOOGLE_API_KEY:
             results.append("GEMINI: ❌ missing")
@@ -103,38 +88,7 @@ async def test_api(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text("🔎 Kết quả kiểm tra API:\n" + "\n".join(results))
 
-# =======================
-# 🚀 Các lệnh khác
-# =======================
-async def start(update, context):
-    await update.message.reply_text(
-        "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
-        "🤖 Công cụ: 🌌 Chat AI với Gemini | 🌐 Kiểm tra IP | 🎬 Tải TikTok\n\n"
-        "📌 Thành viên phát triển BOT:\n"
-        "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
-        "   👤 Telegram Support – @Telegram\n"
-        "   🤖 Bot chính thức – @ToMinhDiem_bot\n\n"
-        "💡 Gõ /help để xem tất cả lệnh khả dụng."
-    )
-
-async def help_command(update, context):
-    await update.message.reply_text(
-        "📖 **Danh sách lệnh khả dụng (Chỉ Gemini AI)** 📖\n\n"
-        "🔹 /start - Giới thiệu bot\n"
-        "🔹 /help - Xem hướng dẫn chi tiết\n"
-        "🤖 **Chế độ AI Gemini**:\n"
-        "   • /gemini - Bật chế độ AI Gemini\n"
-        "   • /exit - Thoát khỏi chế độ AI\n\n"
-        "🌐 **Công cụ khác**:\n"
-        "   • /ip <ip> - Kiểm tra thông tin IP\n"
-        "   • /tiktok <link> - Tải video/ảnh TikTok\n"
-        "   • /testapi - Kiểm tra API Gemini\n\n"
-        "🔒 **Admin**:\n"
-        "   • /shutdown - Tắt bot\n"
-        "   • /restart - Khởi động lại bot\n"
-        "   • /startbot - Kiểm tra bot"
-    )
-
+# ==== IP Check ====
 def get_ip_info(ip):
     try:
         url = f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query"
@@ -167,6 +121,7 @@ async def check_ip(update, context):
     else:
         await update.message.reply_text(info)
 
+# ==== TikTok ====
 TIKWM_API = "https://www.tikwm.com/api/"
 HEADERS = {"User-Agent": "Mozilla/5.0", "Referer": "https://www.tikwm.com/"}
 
@@ -189,10 +144,61 @@ async def download_tiktok(update, context):
             await waiting_msg.delete()
             await update.message.reply_video(url, caption=f"🎬 {title} (HQ)")
         elif data.get("images"):
-            await waiting_msg.edit_text(f"🖼 {title}\n\nĐang gửi ảnh...")
+            await waiting_msg.edit_text(f"🖼 {title}\nĐang gửi ảnh...")
             for img_url in data["images"]:
                 await update.message.reply_photo(img_url)
         else:
             await waiting_msg.edit_text("⚠️ Không tìm thấy video/ảnh trong link này.")
     except Exception as e:
-        await waiting_msg.edit_text(f"⚠️ Lỗi khi tải TikTok: {e
+        await waiting_msg.edit_text(f"⚠️ Lỗi khi tải TikTok: {e}")
+
+# ==== Start & Help ====
+async def start(update, context):
+    await update.message.reply_text(
+        "✨ **Chào mừng bạn đến với BOT Gemini** ✨\n"
+        "🌌 Chat AI với Gemini | 🌐 Kiểm tra IP | 🎬 Tải TikTok\n"
+        "💡 Gõ /help để xem lệnh."
+    )
+
+async def help_command(update, context):
+    await update.message.reply_text(
+        "📖 **Danh sách lệnh khả dụng** 📖\n\n"
+        "🤖 AI Gemini:\n"
+        "• /gemini - Bật chế độ AI Gemini\n"
+        "• /exit - Thoát khỏi AI Gemini\n\n"
+        "🌐 Công cụ:\n"
+        "• /ip <ip> - Kiểm tra IP\n"
+        "• /tiktok <link> - Tải TikTok\n"
+        "• /testapi - Test API Gemini\n\n"
+        "🔒 Admin:\n"
+        "• /shutdown - Tắt bot\n"
+        "• /restart - Khởi động lại bot\n"
+        "• /startbot - Kiểm tra bot"
+    )
+
+# ==== MAIN ====
+def main():
+    app = Application.builder().token(TOKEN).build()
+
+    # Gemini AI
+    app.add_handler(CommandHandler("gemini", gemini_mode))
+    app.add_handler(CommandHandler("exit", exit_ai))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_gemini_message))
+
+    # Tools
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("ip", check_ip))
+    app.add_handler(CommandHandler("tiktok", download_tiktok))
+    app.add_handler(CommandHandler("testapi", test_api))
+
+    # Admin
+    app.add_handler(CommandHandler("shutdown", shutdown))
+    app.add_handler(CommandHandler("restart", restart))
+    app.add_handler(CommandHandler("startbot", startbot))
+
+    print("🤖 Bot Gemini đang chạy...")
+    app.run_polling()
+
+if __name__ == "__main__":
+    main()
