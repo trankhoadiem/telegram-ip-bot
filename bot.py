@@ -3,11 +3,9 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 import requests
 import os
 import sys
-import google.generativeai as genai
 
-# ==== TOKEN & API KEYS ====
+# ==== TOKEN ====
 TOKEN = os.environ.get("TOKEN")
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 
 # ==== ADMIN ====
 ADMIN_USERNAME = "DuRinn_LeTuanDiem"
@@ -15,42 +13,6 @@ ADMIN_USERNAME = "DuRinn_LeTuanDiem"
 def is_admin(update: Update):
     user = update.effective_user
     return user and user.username == ADMIN_USERNAME
-
-# ==== Gemini AI ====
-async def gemini_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["ai_mode"] = "gemini"
-    await update.message.reply_text(
-        "🌌 **Chế độ Gemini đã được bật**\n\n"
-        "Bạn có thể trò chuyện trực tiếp với Google Gemini.\n"
-        "⏳ Bot sẽ trả lời nhanh chóng, bạn chỉ cần gõ tin nhắn.\n"
-        "❌ Dùng lệnh /exit để thoát khỏi chế độ AI Gemini."
-    )
-
-async def exit_ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["ai_mode"] = None
-    await update.message.reply_text(
-        "✅ Bạn đã thoát khỏi **Chế độ AI Gemini**.\n"
-        "👉 Gõ /gemini để bật lại khi cần."
-    )
-
-async def chat_gemini(query: str) -> str:
-    if not GOOGLE_API_KEY:
-        return "❌ GEMINI lỗi: Thiếu GOOGLE_API_KEY"
-    try:
-        genai.configure(api_key=GOOGLE_API_KEY)
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        resp = model.generate_content(query)
-        return resp.text
-    except Exception as e:
-        return f"⚠️ GEMINI lỗi: {e}"
-
-async def handle_gemini_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if context.user_data.get("ai_mode") != "gemini":
-        return
-    query = update.message.text.strip()
-    thinking_msg = await update.message.reply_text("⏳ Đang suy nghĩ...")
-    reply = await chat_gemini(query)
-    await thinking_msg.edit_text(reply)
 
 # ==== Admin Commands ====
 async def shutdown(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -72,25 +34,6 @@ async def startbot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⛔ Bạn không có quyền dùng lệnh này.")
         return
     await update.message.reply_text("✅ Bot đang chạy bình thường!")
-
-# ==== Test API ====
-async def test_api(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    results = []
-    try:
-        if not GOOGLE_API_KEY:
-            results.append("GEMINI: ❌ missing")
-        else:
-            genai.configure(api_key=GOOGLE_API_KEY)
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            resp = model.generate_content("ping")
-            if resp.text:
-                results.append("GEMINI: ✅ OK")
-            else:
-                results.append("GEMINI: ⚠️ No response")
-    except Exception as e:
-        results.append(f"GEMINI: ⚠️ {e}")
-
-    await update.message.reply_text("🔎 Kết quả kiểm tra API:\n" + "\n".join(results))
 
 # ==== IP Check ====
 def get_ip_info(ip):
@@ -160,7 +103,7 @@ async def download_tiktok(update, context):
 async def start(update, context):
     await update.message.reply_text(
         "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
-        "🤖 Công cụ: 🌌 Chat AI Gemini | 🌐 Kiểm tra IP | 🎬 Tải TikTok\n\n"
+        "🌐 Công cụ: Kiểm tra IP | 🎬 Tải TikTok\n\n"
         "⚡ Bot vẫn đang **cập nhật hằng ngày**, có thể tồn tại một số lỗi.\n\n"
         "📌 Thành viên phát triển BOT:\n"
         "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
@@ -172,46 +115,34 @@ async def start(update, context):
 async def help_command(update, context):
     await update.message.reply_text(
         "📖 **Hướng dẫn sử dụng BOT chi tiết** 📖\n\n"
-        "✨ Bot hỗ trợ nhiều tính năng tiện ích và AI thông minh:\n\n"
         "🔹 /start - Giới thiệu bot và thông tin cơ bản.\n"
-        "🔹 /help - Hiển thị danh sách lệnh kèm mô tả chi tiết.\n\n"
-        "🤖 **Chế độ AI**:\n"
-        "   • /gemini - Bật chế độ AI Gemini, phản hồi nhanh và súc tích.\n"
-        "   • /exit - Thoát khỏi chế độ AI Gemini.\n\n"
-        "🌐 **Công cụ khác**:\n"
+        "🔹 /help - Hiển thị danh sách lệnh chi tiết.\n\n"
+        "🌐 **Công cụ**:\n"
         "   • /ip <ip> - Kiểm tra thông tin chi tiết của một địa chỉ IP.\n"
-        "   • /tiktok <link> - Tải video/ảnh TikTok không watermark.\n"
-        "   • /testapi - Kiểm tra trạng thái API Gemini.\n\n"
+        "   • /tiktok <link> - Tải video/ảnh TikTok không watermark.\n\n"
         "🔒 **Lệnh Admin**:\n"
         "   • /shutdown - Tắt bot.\n"
         "   • /restart - Khởi động lại bot.\n"
         "   • /startbot - Kiểm tra bot đang chạy.\n\n"
-        "💡 Lưu ý: Một số lệnh yêu cầu bạn phải nhập đúng cú pháp để bot hiểu.\n"
-        "👉 Hãy thử ngay bằng cách gõ /gemini để trò chuyện với AI!"
+        "💡 Lưu ý: Một số lệnh yêu cầu cú pháp chính xác để bot hiểu."
     )
 
 # ==== MAIN ====
 def main():
     app = Application.builder().token(TOKEN).build()
 
-    # Gemini AI
-    app.add_handler(CommandHandler("gemini", gemini_mode))
-    app.add_handler(CommandHandler("exit", exit_ai))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_gemini_message))
-
     # Tools
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("ip", check_ip))
     app.add_handler(CommandHandler("tiktok", download_tiktok))
-    app.add_handler(CommandHandler("testapi", test_api))
 
     # Admin
     app.add_handler(CommandHandler("shutdown", shutdown))
     app.add_handler(CommandHandler("restart", restart))
     app.add_handler(CommandHandler("startbot", startbot))
 
-    print("🤖 Bot Gemini đang chạy...")
+    print("🤖 Bot đang chạy...")
     app.run_polling()
 
 if __name__ == "__main__":
