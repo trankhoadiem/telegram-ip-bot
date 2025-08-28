@@ -3,9 +3,9 @@ import os
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-# Lấy API Key từ biến môi trường (cấu hình trong Railway)
-openai.api_key = os.getenv("OPENAI_API_KEY")  # Sử dụng OPENAI_API_KEY từ Railway
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")  # Sử dụng TELEGRAM_TOKEN từ Railway
+# Lấy API Key từ biến môi trường
+openai.api_key = os.getenv("OPENAI_API_KEY")  # Đảm bảo API Key đã đúng
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")  # Token bot Telegram
 
 # Hàm xử lý /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -17,13 +17,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text  # Câu hỏi người dùng gửi
     try:
-        # Gọi OpenAI API để nhận câu trả lời với cách gọi mới
-        response = openai.completions.create(
-            model="gpt-3.5-turbo",  # Bạn có thể thay đổi model nếu cần
-            prompt=user_message,
+        # Cách gọi OpenAI API mới với `ChatCompletion.create`
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",  # Bạn có thể thay đổi model nếu muốn
+            messages=[
+                {"role": "system", "content": "Bạn là một trợ lý thông minh."},  # Hướng dẫn bot trả lời
+                {"role": "user", "content": user_message}
+            ],
             max_tokens=150
         )
-        answer = response['choices'][0]['text'].strip()  # Lấy câu trả lời từ GPT-3
+        # Trả lời từ OpenAI API
+        answer = response['choices'][0]['message']['content'].strip()
         await update.message.reply_text(answer)
     
     except Exception as e:
