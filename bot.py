@@ -3,9 +3,12 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 import requests
 import os
 import sys
+from yt_dlp import YoutubeDL
+from urllib.parse import urlparse, parse_qs
 
-# ==== TOKEN ====
+# ==== TOKEN & API KEYS ====
 TOKEN = os.environ.get("TOKEN")
+YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
 
 # ==== ADMIN ====
 ADMIN_USERNAME = "DuRinn_LeTuanDiem"
@@ -99,11 +102,47 @@ async def download_tiktok(update, context):
     except Exception as e:
         await waiting_msg.edit_text(f"⚠️ Lỗi khi tải TikTok: {e}")
 
+# ==== YouTube ====
+def get_youtube_info(youtube_url):
+    query = parse_qs(urlparse(youtube_url).query)
+    video_id = query.get("v")
+    if not video_id:
+        return None
+    video_id = video_id[0]
+    url = f"https://www.googleapis.com/youtube/v3/videos?part=snippet&id={video_id}&key={YOUTUBE_API_KEY}"
+    res = requests.get(url).json()
+    if "items" in res and len(res["items"]) > 0:
+        video = res["items"][0]["snippet"]
+        return {"title": video["title"], "video_id": video_id}
+    return None
+
+def download_youtube(video_url, save_path="downloads/"):
+    ydl_opts = {"format": "best", "outtmpl": save_path + "%(title)s.%(ext)s"}
+    with YoutubeDL(ydl_opts) as ydl:
+        ydl.download([video_url])
+
+async def download_youtube_handler(update, context):
+    if not context.args:
+        await update.message.reply_text("👉 Dùng: /youtube <link YouTube>")
+        return
+    link = context.args[0].strip()
+    waiting_msg = await update.message.reply_text("⏳ Đang kiểm tra video...")
+    info = get_youtube_info(link)
+    if not info:
+        await waiting_msg.edit_text("❌ Không tìm thấy video hoặc link không hợp lệ.")
+        return
+    await waiting_msg.edit_text(f"✅ Video tìm thấy: {info['title']}\n⏳ Đang tải...")
+    try:
+        download_youtube(link)
+        await update.message.reply_text(f"🎬 Video {info['title']} đã tải xong. Kiểm tra thư mục server!")
+    except Exception as e:
+        await waiting_msg.edit_text(f"⚠️ Lỗi khi tải video: {e}")
+
 # ==== Start & Help ====
 async def start(update, context):
     await update.message.reply_text(
         "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
-        "🌐 Công cụ: Kiểm tra IP | 🎬 Tải TikTok\n\n"
+        "🌐 Công cụ: Kiểm tra IP | 🎬 Tải TikTok & YouTube\n\n"
         "⚡ Bot vẫn đang **cập nhật hằng ngày**, có thể tồn tại một số lỗi.\n\n"
         "📌 Thành viên phát triển BOT:\n"
         "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
@@ -115,16 +154,16 @@ async def start(update, context):
 async def help_command(update, context):
     await update.message.reply_text(
         "📖 **Hướng dẫn sử dụng BOT chi tiết** 📖\n\n"
-        "🔹 /start - Giới thiệu bot và thông tin cơ bản.\n"
-        "🔹 /help - Hiển thị danh sách lệnh chi tiết.\n\n"
+        "🔹 /start - Giới thiệu bot.\n"
+        "🔹 /help - Xem danh sách lệnh.\n\n"
         "🌐 **Công cụ**:\n"
-        "   • /ip <ip> - Kiểm tra thông tin chi tiết của một địa chỉ IP.\n"
-        "   • /tiktok <link> - Tải video/ảnh TikTok không watermark.\n\n"
-        "🔒 **Lệnh Admin**:\n"
+        "   • /ip <ip> - Kiểm tra thông tin IP.\n"
+        "   • /tiktok <link> - Tải video/ảnh TikTok.\n"
+        "   • /youtube <link> - Tải video YouTube.\n\n"
+        "🔒 **Admin**:\n"
         "   • /shutdown - Tắt bot.\n"
         "   • /restart - Khởi động lại bot.\n"
-        "   • /startbot - Kiểm tra bot đang chạy.\n\n"
-        "💡 Lưu ý: Một số lệnh yêu cầu cú pháp chính xác để bot hiểu."
+        "   • /startbot - Kiểm tra bot đang chạy."
     )
 
 # ==== MAIN ====
@@ -136,6 +175,7 @@ def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("ip", check_ip))
     app.add_handler(CommandHandler("tiktok", download_tiktok))
+    app.add_handler(CommandHandler("youtube", download_youtube_handler))
 
     # Admin
     app.add_handler(CommandHandler("shutdown", shutdown))
