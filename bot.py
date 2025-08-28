@@ -25,7 +25,7 @@ async def chat_gpt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         # Gửi yêu cầu đến OpenAI để nhận câu trả lời
         response = openai.Completion.create(
-            model="text-davinci-003",  # Có thể thay đổi thành gpt-3.5-turbo nếu cần
+            model="gpt-3.5-turbo",  # Hoặc gpt-4 nếu bạn có quyền truy cập
             prompt=user_message,
             max_tokens=150,  # Giới hạn số token của phản hồi
             temperature=0.7  # Điều chỉnh độ sáng tạo của câu trả lời
