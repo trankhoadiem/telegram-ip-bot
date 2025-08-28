@@ -5,11 +5,11 @@ import os
 import openai
 import google.generativeai as genai
 
-# ==== TOKEN ====
+# ==== TOKEN & API KEYS ====
 TOKEN = os.environ.get("TOKEN")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 XAI_API_KEY = os.environ.get("XAI_API_KEY")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")   # Gemini key
 
 # ==== ADMIN ====
 ADMIN_USERNAME = "DuRinn_LeTuanDiem"   # check bằng username
@@ -64,6 +64,15 @@ async def handle_ai_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return  # không trong AI mode thì bỏ qua
 
     query = update.message.text.strip()
+
+    # Gửi tin nhắn "đang suy nghĩ..."
+    thinking_msg = await update.message.reply_text("⏳ Đang suy nghĩ...")
+    # Xoá tin nhắn gốc của user
+    try:
+        await update.message.delete()
+    except:
+        pass
+
     try:
         if mode == "gpt":
             openai.api_key = OPENAI_API_KEY
@@ -84,7 +93,7 @@ async def handle_ai_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply = data["choices"][0]["message"]["content"]
 
         elif mode == "gemini":
-            genai.configure(api_key=GEMINI_API_KEY)
+            genai.configure(api_key=GOOGLE_API_KEY)
             model = genai.GenerativeModel("gemini-1.5-flash")
             resp = model.generate_content(query)
             reply = resp.text
@@ -94,7 +103,8 @@ async def handle_ai_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         reply = f"⚠️ Lỗi {mode.upper()}: {e}"
 
-    await update.message.reply_text(reply)
+    # Edit lại tin nhắn suy nghĩ thành câu trả lời
+    await thinking_msg.edit_text(reply)
 
 # =======================
 # 🚀 Admin Commands
@@ -112,7 +122,7 @@ async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await update.message.reply_text("♻️ Bot đang khởi động lại...")
     await context.application.stop()
-    # Thực tế restart cần systemd/pm2/docker, ở đây chỉ stop
+    # restart thực sự cần systemd/pm2/docker giám sát
 
 async def startbot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
