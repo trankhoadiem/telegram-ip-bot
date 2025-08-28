@@ -1,5 +1,5 @@
-import os
 import openai
+import os
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -17,13 +17,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_message = update.message.text  # Câu hỏi người dùng gửi
     try:
-        # Gọi OpenAI API để nhận câu trả lời
-        response = openai.Completion.create(
-            model="text-davinci-003",  # Bạn có thể thay đổi model nếu cần
-            prompt=user_message,
+        # Gọi OpenAI API để nhận câu trả lời với cách gọi mới
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",  # Bạn có thể thay đổi model nếu cần
+            messages=[{"role": "user", "content": user_message}],
             max_tokens=150
         )
-        answer = response.choices[0].text.strip()  # Lấy câu trả lời từ GPT-3
+        answer = response['choices'][0]['message']['content'].strip()  # Lấy câu trả lời từ GPT-3
         await update.message.reply_text(answer)
     
     except Exception as e:
