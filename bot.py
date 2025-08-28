@@ -7,9 +7,9 @@ import google.generativeai as genai
 
 # ==== TOKEN ====
 TOKEN = os.environ.get("TOKEN")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")   # ChatGPT
-XAI_API_KEY = os.environ.get("XAI_API_KEY")         # Grok
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")   # Gemini
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+XAI_API_KEY = os.environ.get("XAI_API_KEY")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 # ==== TikTok API ====
 TIKWM_API = "https://www.tikwm.com/api/"
@@ -19,82 +19,78 @@ HEADERS = {
 }
 
 # =======================
-# 🚀 AI Commands
+# 🚀 AI MODE
 # =======================
 
-# /ai (chế độ AI)
 async def ai_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["ai_mode"] = None
     await update.message.reply_text(
-        "🤖 Đã chuyển sang **chế độ AI**.\n\n"
-        "👉 Hãy chọn chế độ bạn muốn dùng:\n"
+        "🤖 Đã bật **chế độ AI**.\n\n"
+        "👉 Chọn model:\n"
         "/gpt - Chat GPT\n"
         "/grok - Chat Grok\n"
         "/gemini - Chat Gemini\n"
         "/exit - Thoát chế độ AI"
     )
 
-# /exit (thoát chế độ AI)
 async def exit_ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✅ Bạn đã thoát khỏi **chế độ AI**.")
+    context.user_data["ai_mode"] = None
+    await update.message.reply_text("✅ Bạn đã thoát **chế độ AI**.")
 
-# GPT
+# chọn model
 async def gpt(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args:
-        await update.message.reply_text("👉 Dùng: /gpt <câu hỏi>")
-        return
-    query = " ".join(context.args)
-    try:
-        openai.api_key = OPENAI_API_KEY
-        res = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": query}]
-        )
-        reply = res.choices[0].message["content"]
-        await update.message.reply_text(
-            f"🤖 Chat GPT đang trả lời...\n\n{reply}\n\n---\n👮 Admin: @DuRinn_LeTuanDiem"
-        )
-    except Exception as e:
-        await update.message.reply_text(f"⚠️ Lỗi GPT: {e}")
+    context.user_data["ai_mode"] = "gpt"
+    await update.message.reply_text("👉 Bạn đang chat với **ChatGPT**. Nhập tin nhắn... (/exit để thoát)")
 
-# Grok
 async def grok(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args:
-        await update.message.reply_text("👉 Dùng: /grok <câu hỏi>")
-        return
-    query = " ".join(context.args)
-    try:
-        headers = {"Authorization": f"Bearer {XAI_API_KEY}"}
-        resp = requests.post(
-            "https://api.x.ai/v1/chat/completions",
-            headers=headers,
-            json={"model": "grok-beta", "messages": [{"role": "user", "content": query}]}
-        )
-        data = resp.json()
-        reply = data["choices"][0]["message"]["content"]
-        await update.message.reply_text(
-            f"🦉 Chat Grok đang trả lời...\n\n{reply}\n\n---\n👮 Admin: @DuRinn_LeTuanDiem"
-        )
-    except Exception as e:
-        await update.message.reply_text(f"⚠️ Lỗi Grok: {e}")
+    context.user_data["ai_mode"] = "grok"
+    await update.message.reply_text("👉 Bạn đang chat với **Grok**. Nhập tin nhắn... (/exit để thoát)")
 
-# Gemini
 async def gemini(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args:
-        await update.message.reply_text("👉 Dùng: /gemini <câu hỏi>")
-        return
-    query = " ".join(context.args)
+    context.user_data["ai_mode"] = "gemini"
+    await update.message.reply_text("👉 Bạn đang chat với **Gemini**. Nhập tin nhắn... (/exit để thoát)")
+
+# xử lý tin nhắn khi đang trong chế độ AI
+async def handle_ai_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    mode = context.user_data.get("ai_mode")
+    if not mode:
+        return  # không trong AI mode thì bỏ qua
+
+    query = update.message.text.strip()
     try:
-        genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-pro")
-        resp = model.generate_content(query)
-        await update.message.reply_text(
-            f"🌌 Chat Gemini đang trả lời...\n\n{resp.text}\n\n---\n👮 Admin: @DuRinn_LeTuanDiem"
-        )
+        if mode == "gpt":
+            openai.api_key = OPENAI_API_KEY
+            res = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": query}]
+            )
+            reply = res.choices[0].message["content"]
+
+        elif mode == "grok":
+            headers = {"Authorization": f"Bearer {XAI_API_KEY}"}
+            resp = requests.post(
+                "https://api.x.ai/v1/chat/completions",
+                headers=headers,
+                json={"model": "grok-4-0709", "messages": [{"role": "user", "content": query}]}
+            )
+            data = resp.json()
+            reply = data["choices"][0]["message"]["content"]
+
+        elif mode == "gemini":
+            genai.configure(api_key=GEMINI_API_KEY)
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            resp = model.generate_content(query)
+            reply = resp.text
+
+        else:
+            reply = "⚠️ Chưa chọn model AI."
     except Exception as e:
-        await update.message.reply_text(f"⚠️ Lỗi Gemini: {e}")
+        reply = f"⚠️ Lỗi {mode.upper()}: {e}"
+
+    await update.message.reply_text(reply)
 
 # =======================
-# 🚀 Các lệnh sẵn có
+# 🚀 Các lệnh khác
 # =======================
 
 # /start
@@ -102,25 +98,27 @@ async def start(update, context):
     await update.message.reply_text(
         "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
         "🤖 Công cụ tra cứu IP, tải TikTok video/ảnh chất lượng cao & chat AI (GPT, Grok, Gemini).\n\n"
+        "⚡ Bot vẫn đang **cập nhật hằng ngày**, nên có thể sẽ tồn tại một số lỗi trong quá trình sử dụng.\n\n"
         "📌 Các thành viên phát triển BOT:\n"
+        "   👤 Vương Quốc Anh\n"
         "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
         "   👤 Telegram Support – @Telegram\n"
         "   🤖 Bot chính thức – @ToMinhDiem_bot\n\n"
         "💡 Gõ /help để xem lệnh khả dụng."
     )
 
-# /help (chỉ còn /ai)
+# /help
 async def help_command(update, context):
     await update.message.reply_text(
         "📖 Lệnh có sẵn:\n\n"
         "/start - Bắt đầu\n"
         "/help - Trợ giúp\n"
-        "/ai - Chuyển sang chế độ AI (GPT, Grok, Gemini)\n"
-        "/ip <địa chỉ ip> - Kiểm tra thông tin IP\n"
-        "/tiktok <link> - Tải video/ảnh TikTok"
+        "/ai - Chế độ AI (GPT, Grok, Gemini)\n"
+        "/ip <ip> - Kiểm tra IP\n"
+        "/tiktok <link> - Tải TikTok"
     )
 
-# Check IP
+# IP lookup
 def get_ip_info(ip):
     try:
         url = f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query"
@@ -153,7 +151,7 @@ async def check_ip(update, context):
     else:
         await update.message.reply_text(info)
 
-# TikTok Downloader
+# TikTok downloader
 async def download_tiktok(update, context):
     if not context.args:
         await update.message.reply_text("👉 Dùng: /tiktok <link TikTok>")
@@ -189,7 +187,7 @@ async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 # =======================
-# 🚀 Main
+# 🚀 MAIN
 # =======================
 def main():
     app = Application.builder().token(TOKEN).build()
@@ -200,6 +198,7 @@ def main():
     app.add_handler(CommandHandler("gpt", gpt))
     app.add_handler(CommandHandler("grok", grok))
     app.add_handler(CommandHandler("gemini", gemini))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_ai_message))
 
     # Tools
     app.add_handler(CommandHandler("start", start))
