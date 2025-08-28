@@ -3,13 +3,10 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 import requests
 import os
 import sys
-from openai import OpenAI
 import google.generativeai as genai
 
 # ==== TOKEN & API KEYS ====
 TOKEN = os.environ.get("TOKEN")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-XAI_API_KEY = os.environ.get("XAI_API_KEY")
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 
 # ==== ADMIN ====
@@ -19,80 +16,26 @@ def is_admin(update: Update):
     user = update.effective_user
     return user and user.username == ADMIN_USERNAME
 
-# ==== TikTok API ====
-TIKWM_API = "https://www.tikwm.com/api/"
-HEADERS = {"User-Agent": "Mozilla/5.0", "Referer": "https://www.tikwm.com/"}
-
 # =======================
-# 🚀 AI MODE
+# 🚀 Gemini AI
 # =======================
 
-async def ai_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["ai_mode"] = None
+async def gemini_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["ai_mode"] = "gemini"
     await update.message.reply_text(
-        "🤖 **Chế độ AI đã được bật**\n\n"
-        "Trong chế độ này, bạn có thể trò chuyện với các mô hình AI khác nhau:\n"
-        "🧠 /gpt - Sử dụng ChatGPT (OpenAI)\n"
-        "🦉 /grok - Sử dụng Grok (xAI)\n"
-        "🌌 /gemini - Sử dụng Gemini (Google)\n\n"
-        "👉 Sau khi chọn model, bạn chỉ cần gõ tin nhắn là AI sẽ trả lời.\n"
+        "🌌 **Chế độ Gemini đã được bật**\n\n"
+        "Bạn chỉ cần gõ tin nhắn, bot sẽ trả lời bằng Google Gemini.\n"
         "❌ Dùng lệnh /exit để thoát khỏi chế độ AI."
     )
 
 async def exit_ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["ai_mode"] = None
     await update.message.reply_text(
-        "✅ Bạn đã thoát khỏi **Chế độ AI**.\n\n"
-        "👉 Nếu muốn bật lại, gõ /ai và chọn model."
+        "✅ Bạn đã thoát khỏi **Chế độ AI Gemini**.\n"
+        "👉 Nếu muốn bật lại, gõ /gemini."
     )
 
-# chọn model
-async def gpt(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["ai_mode"] = "gpt"
-    await update.message.reply_text("🧠 Bạn đang trò chuyện với **ChatGPT**.")
-
-async def grok(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["ai_mode"] = "grok"
-    await update.message.reply_text("🦉 Bạn đang trò chuyện với **Grok**.")
-
-async def gemini(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["ai_mode"] = "gemini"
-    await update.message.reply_text("🌌 Bạn đang trò chuyện với **Gemini**.")
-
-# ==== Hàm gọi AI ====
-async def chat_gpt(query: str) -> str:
-    if not OPENAI_API_KEY:
-        return "❌ GPT lỗi: Thiếu OPENAI_API_KEY"
-    try:
-        client = OpenAI(api_key=OPENAI_API_KEY)
-        res = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": query}],
-        )
-        return res.choices[0].message.content
-    except Exception as e:
-        return f"⚠️ GPT lỗi: {e}"
-
-async def chat_grok(query: str) -> str:
-    if not XAI_API_KEY:
-        return "❌ GROK lỗi: Thiếu XAI_API_KEY"
-    try:
-        resp = requests.post(
-            "https://api.x.ai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {XAI_API_KEY}"},
-            json={
-                "model": "grok-2",
-                "messages": [{"role": "user", "content": query}],
-            },
-            timeout=30,
-        )
-        data = resp.json()
-        if "choices" in data:
-            return data["choices"][0]["message"]["content"]
-        return f"⚠️ GROK trả về lỗi: {data}"
-    except Exception as e:
-        return f"⚠️ GROK lỗi: {e}"
-
+# ==== Hàm gọi Gemini ====
 async def chat_gemini(query: str) -> str:
     if not GOOGLE_API_KEY:
         return "❌ GEMINI lỗi: Thiếu GOOGLE_API_KEY"
@@ -104,24 +47,15 @@ async def chat_gemini(query: str) -> str:
     except Exception as e:
         return f"⚠️ GEMINI lỗi: {e}"
 
-# xử lý tin nhắn khi đang trong chế độ AI
+# xử lý tin nhắn khi đang trong chế độ Gemini
 async def handle_ai_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mode = context.user_data.get("ai_mode")
-    if not mode:
+    if mode != "gemini":
         return
 
     query = update.message.text.strip()
     thinking_msg = await update.message.reply_text("⏳ Đang suy nghĩ...")
-
-    if mode == "gpt":
-        reply = await chat_gpt(query)
-    elif mode == "grok":
-        reply = await chat_grok(query)
-    elif mode == "gemini":
-        reply = await chat_gemini(query)
-    else:
-        reply = "⚠️ Chưa chọn model AI."
-
+    reply = await chat_gemini(query)
     await thinking_msg.edit_text(reply)
 
 # =======================
@@ -153,40 +87,6 @@ async def startbot(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def test_api(update: Update, context: ContextTypes.DEFAULT_TYPE):
     results = []
 
-    # GPT
-    try:
-        if not OPENAI_API_KEY:
-            results.append("OPENAI: ❌ missing")
-        else:
-            client = OpenAI(api_key=OPENAI_API_KEY)
-            res = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": "ping"}],
-                max_tokens=5,
-            )
-            results.append("OPENAI: ✅ OK")
-    except Exception as e:
-        results.append(f"OPENAI: ⚠️ {e}")
-
-    # GROK
-    try:
-        if not XAI_API_KEY:
-            results.append("GROK: ❌ missing")
-        else:
-            resp = requests.post(
-                "https://api.x.ai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {XAI_API_KEY}"},
-                json={"model": "grok-2", "messages": [{"role": "user", "content": "ping"}]},
-                timeout=20,
-            )
-            if resp.status_code == 200:
-                results.append("GROK: ✅ OK")
-            else:
-                results.append(f"GROK: ⚠️ {resp.status_code} {resp.text}")
-    except Exception as e:
-        results.append(f"GROK: ⚠️ {e}")
-
-    # GEMINI
     try:
         if not GOOGLE_API_KEY:
             results.append("GEMINI: ❌ missing")
@@ -209,8 +109,7 @@ async def test_api(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start(update, context):
     await update.message.reply_text(
         "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
-        "🤖 Công cụ: 🌐 Kiểm tra IP | 🎬 Tải TikTok | 🤖 Chat AI (GPT, Grok, Gemini)\n\n"
-        "⚡ Bot vẫn đang **cập nhật hằng ngày**, có thể tồn tại một số lỗi.\n\n"
+        "🤖 Công cụ: 🌌 Chat AI với Gemini | 🌐 Kiểm tra IP | 🎬 Tải TikTok\n\n"
         "📌 Thành viên phát triển BOT:\n"
         "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
         "   👤 Telegram Support – @Telegram\n"
@@ -220,26 +119,20 @@ async def start(update, context):
 
 async def help_command(update, context):
     await update.message.reply_text(
-        "📖 **Hướng dẫn sử dụng BOT chi tiết** 📖\n\n"
-        "✨ Bot hỗ trợ nhiều tính năng tiện ích và AI thông minh:\n\n"
-        "🔹 /start - Giới thiệu bot và thông tin cơ bản.\n"
-        "🔹 /help - Hiển thị danh sách lệnh kèm mô tả chi tiết.\n\n"
-        "🤖 **Chế độ AI**:\n"
-        "   • /ai - Bật chế độ AI và chọn model để trò chuyện.\n"
-        "   • /gpt - Dùng ChatGPT để hỏi đáp, hỗ trợ thông minh.\n"
-        "   • /grok - Dùng Grok (xAI), phong cách khác biệt hơn.\n"
-        "   • /gemini - Dùng Gemini (Google), phản hồi nhanh và súc tích.\n"
-        "   • /exit - Thoát khỏi chế độ AI.\n\n"
+        "📖 **Danh sách lệnh khả dụng (Chỉ Gemini AI)** 📖\n\n"
+        "🔹 /start - Giới thiệu bot\n"
+        "🔹 /help - Xem hướng dẫn chi tiết\n"
+        "🤖 **Chế độ AI Gemini**:\n"
+        "   • /gemini - Bật chế độ AI Gemini\n"
+        "   • /exit - Thoát khỏi chế độ AI\n\n"
         "🌐 **Công cụ khác**:\n"
-        "   • /ip <ip> - Kiểm tra thông tin chi tiết của một địa chỉ IP.\n"
-        "   • /tiktok <link> - Tải video/ảnh TikTok không watermark.\n"
-        "   • /testapi - Kiểm tra trạng thái các API key (GPT, Grok, Gemini).\n\n"
-        "🔒 **Lệnh Admin**:\n"
-        "   • /shutdown - Tắt bot.\n"
-        "   • /restart - Khởi động lại bot.\n"
-        "   • /startbot - Kiểm tra bot đang chạy.\n\n"
-        "💡 Lưu ý: Một số lệnh yêu cầu bạn phải nhập đúng cú pháp để bot hiểu.\n"
-        "👉 Hãy thử ngay bằng cách gõ /ai và chọn mô hình AI yêu thích!"
+        "   • /ip <ip> - Kiểm tra thông tin IP\n"
+        "   • /tiktok <link> - Tải video/ảnh TikTok\n"
+        "   • /testapi - Kiểm tra API Gemini\n\n"
+        "🔒 **Admin**:\n"
+        "   • /shutdown - Tắt bot\n"
+        "   • /restart - Khởi động lại bot\n"
+        "   • /startbot - Kiểm tra bot"
     )
 
 def get_ip_info(ip):
@@ -274,6 +167,9 @@ async def check_ip(update, context):
     else:
         await update.message.reply_text(info)
 
+TIKWM_API = "https://www.tikwm.com/api/"
+HEADERS = {"User-Agent": "Mozilla/5.0", "Referer": "https://www.tikwm.com/"}
+
 async def download_tiktok(update, context):
     if not context.args:
         await update.message.reply_text("👉 Dùng: /tiktok <link TikTok>")
@@ -299,43 +195,4 @@ async def download_tiktok(update, context):
         else:
             await waiting_msg.edit_text("⚠️ Không tìm thấy video/ảnh trong link này.")
     except Exception as e:
-        await waiting_msg.edit_text(f"⚠️ Lỗi khi tải TikTok: {e}")
-
-async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    for member in update.message.new_chat_members:
-        await update.message.reply_text(f"🎉👋 Chào mừng {member.full_name}!")
-
-# =======================
-# 🚀 MAIN
-# =======================
-def main():
-    app = Application.builder().token(TOKEN).build()
-
-    # AI
-    app.add_handler(CommandHandler("ai", ai_mode))
-    app.add_handler(CommandHandler("exit", exit_ai))
-    app.add_handler(CommandHandler("gpt", gpt))
-    app.add_handler(CommandHandler("grok", grok))
-    app.add_handler(CommandHandler("gemini", gemini))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_ai_message))
-
-    # Tools
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(CommandHandler("ip", check_ip))
-    app.add_handler(CommandHandler("tiktok", download_tiktok))
-    app.add_handler(CommandHandler("testapi", test_api))
-
-    # Admin
-    app.add_handler(CommandHandler("shutdown", shutdown))
-    app.add_handler(CommandHandler("restart", restart))
-    app.add_handler(CommandHandler("startbot", startbot))
-
-    # Welcome
-    app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
-
-    print("🤖 Bot đang chạy...")
-    app.run_polling()
-
-if __name__ == "__main__":
-    main()
+        await waiting_msg.edit_text(f"⚠️ Lỗi khi tải TikTok: {e
