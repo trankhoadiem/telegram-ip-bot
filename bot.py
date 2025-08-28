@@ -23,10 +23,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def test_api(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         # Gửi yêu cầu đơn giản đến OpenAI API để kiểm tra kết nối
-        response = openai.Completion.create(
+        response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",  # Hoặc gpt-4 nếu bạn có quyền truy cập
-            prompt="Hello",
-            max_tokens=5
+            messages=[{"role": "user", "content": "Hello"}]  # Định dạng mới của API
         )
         
         if response:
@@ -42,14 +41,14 @@ async def chat_gpt(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         # Gửi yêu cầu đến OpenAI để nhận câu trả lời
-        response = openai.Completion.create(
+        response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",  # Hoặc gpt-4 nếu bạn có quyền truy cập
-            prompt=user_message,
+            messages=[{"role": "user", "content": user_message}],
             max_tokens=150,  # Giới hạn số token của phản hồi
             temperature=0.7  # Điều chỉnh độ sáng tạo của câu trả lời
         )
         
-        answer = response.choices[0].text.strip()
+        answer = response['choices'][0]['message']['content'].strip()
         await update.message.reply_text(answer)
     
     except openai.error.OpenAIError as e:
