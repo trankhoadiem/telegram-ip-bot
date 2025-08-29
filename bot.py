@@ -1,10 +1,11 @@
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import requests
+import datetime
 import os
 
 # ==== TOKEN ====
-TOKEN = os.environ.get("TOKEN")
+TOKEN = os.environ.get("TOKEN")  # hoặc thay trực tiếp TOKEN = "123456:ABC..."
 
 # ==== TikTok API ====
 TIKWM_API = "https://www.tikwm.com/api/"
@@ -16,8 +17,8 @@ HEADERS = {
 # ==== /start ====
 async def start(update, context):
     await update.message.reply_text(
-        "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
-        "🤖 Công cụ tra cứu IP & tải TikTok video/ảnh chất lượng cao.\n\n"
+        "✨ **Chào mừng bạn đến với BOT Tiện Ích** ✨\n\n"
+        "🤖 Công cụ tra cứu IP, tải TikTok video/ảnh chất lượng cao và nhiều tiện ích khác.\n\n"
         "📌 Các thành viên phát triển BOT:\n"
         "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
         "   👤 Telegram Support – @Telegram\n"
@@ -27,13 +28,52 @@ async def start(update, context):
 
 # ==== /help ====
 async def help_command(update, context):
-    await update.message.reply_text(
-        "📖 Lệnh có sẵn:\n\n"
-        "/start - Bắt đầu\n"
-        "/help - Trợ giúp\n"
-        "/ip <địa chỉ ip> - Kiểm tra thông tin IP\n"
-        "/tiktok <link> - Tải video/ảnh TikTok chất lượng cao"
-    )
+    text = """
+📖 **Hướng dẫn sử dụng BOT:**
+
+/start - Giới thiệu bot & tác giả
+/help - Hiển thị hướng dẫn chi tiết
+
+/time - Xem thời gian hiện tại
+👉 Ví dụ: /time
+
+/id - Xem ID của bạn và ID nhóm/chat
+👉 Ví dụ: /id
+
+/info - Xem thông tin tài khoản Telegram của bạn
+👉 Ví dụ: /info
+
+/ip <địa chỉ ip> - Kiểm tra thông tin IP (quốc gia, thành phố, ISP...)
+👉 Ví dụ: /ip 8.8.8.8
+
+/tiktok <link TikTok> - Tải video/ảnh TikTok chất lượng cao, không logo
+👉 Ví dụ: /tiktok https://www.tiktok.com/@username/video/123456789
+
+📌 Ngoài ra bot sẽ tự động **chào mừng thành viên mới** khi họ tham gia nhóm.
+"""
+    await update.message.reply_text(text, disable_web_page_preview=True)
+
+# ==== /time ====
+async def time(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    await update.message.reply_text(f"⏰ Thời gian hiện tại: {now}")
+
+# ==== /id ====
+async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    chat_id = update.message.chat_id
+    await update.message.reply_text(f"🆔 User ID: {user_id}\n💬 Chat ID: {chat_id}")
+
+# ==== /info ====
+async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.message.from_user
+    text = f"""
+👤 **Thông tin người dùng:**
+- Họ tên: {user.first_name} {user.last_name or ""}
+- Username: @{user.username}
+- ID: {user.id}
+    """
+    await update.message.reply_text(text)
 
 # ==== Check IP ====
 def get_ip_info(ip):
@@ -60,11 +100,6 @@ def get_ip_info(ip):
         return None, f"⚠️ Lỗi khi kiểm tra IP: {e}"
 
 async def check_ip(update, context):
-    try:
-        await update.message.delete()
-    except:
-        pass
-
     if not context.args:
         await update.message.reply_text("👉 Dùng: /ip 8.8.8.8")
         return
@@ -78,11 +113,6 @@ async def check_ip(update, context):
 
 # ==== TikTok Downloader ====
 async def download_tiktok(update, context):
-    try:
-        await update.message.delete()
-    except:
-        pass
-
     if not context.args:
         await update.message.reply_text("👉 Dùng: /tiktok <link TikTok>")
         return
@@ -105,11 +135,11 @@ async def download_tiktok(update, context):
         if data.get("hdplay") or data.get("play"):
             url = data.get("hdplay") or data.get("play")
             await waiting_msg.delete()
-            await update.message.reply_video(url, caption=f"🎬 {title} (chất lượng cao nhất)")
+            await update.message.reply_video(url, caption=f"🎬 {title} (chất lượng cao)")
 
         # Nếu là bài ảnh
         elif data.get("images"):
-            await waiting_msg.edit_text(f"🖼 {title}\n\nĐang gửi ảnh gốc...")
+            await waiting_msg.edit_text(f"🖼 {title}\n\nĐang gửi ảnh...")
             for img_url in data["images"]:
                 await update.message.reply_photo(img_url)
 
@@ -126,13 +156,16 @@ async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🎉 Chào mừng {member.full_name} đã tham gia nhóm {update.message.chat.title}!"
         )
 
-# ==== Main ====
+# ==== MAIN ====
 def main():
     app = Application.builder().token(TOKEN).build()
 
     # Commands
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("time", time))
+    app.add_handler(CommandHandler("id", get_id))
+    app.add_handler(CommandHandler("info", info))
     app.add_handler(CommandHandler("ip", check_ip))
     app.add_handler(CommandHandler("tiktok", download_tiktok))
 
