@@ -6,7 +6,7 @@ import pytz
 import os
 
 # ==== TOKEN ====
-TOKEN = os.environ.get("TOKEN")  # Hoặc thay trực tiếp TOKEN = "123456:ABC..."
+TOKEN = os.environ.get("TOKEN")  # hoặc thay trực tiếp TOKEN = "123456:ABC..."
 
 # ==== TikTok API ====
 TIKWM_API = "https://www.tikwm.com/api/"
@@ -16,34 +16,40 @@ HEADERS = {
 }
 
 # ==== /start ====
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def start(update, context):
     await update.message.reply_text(
         "✨ **Chào mừng bạn đến với BOT Tiện Ích** ✨\n\n"
         "🤖 Công cụ tra cứu IP, tải TikTok video/ảnh chất lượng cao và nhiều tiện ích khác.\n\n"
+        "📌 Các thành viên phát triển BOT:\n"
+        "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
+        "   👤 Telegram Support – @Telegram\n"
+        "   🤖 Bot chính thức – @ToMinhDiem_bot\n\n"
         "💡 Gõ /help để xem lệnh khả dụng."
     )
 
 # ==== /help ====
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def help_command(update, context):
     text = """
 📖 **Hướng dẫn sử dụng BOT:**
 
 /start - Giới thiệu bot & tác giả
 /help - Hiển thị hướng dẫn chi tiết
 
-/time - Xem giờ thế giới (Việt Nam, Dubai, Mỹ, Nhật, Anh)
-/time <quốc gia> - Xem giờ riêng 1 nước
-👉 Ví dụ:
-/time vietnam
-/time dubai
-/time usa
-/time japan
-/time london
+/time - Xem thời gian hiện tại nhiều quốc gia
+👉 Ví dụ: /time
+👉 Hoặc: /time vietnam, /time dubai, /time usa
 
 /id - Xem ID của bạn và ID nhóm/chat
-/info - Xem thông tin tài khoản của bạn
-/ip <ip> - Kiểm tra thông tin IP
-/tiktok <link> - Tải TikTok video/ảnh không logo
+👉 Ví dụ: /id
+
+/info - Xem thông tin tài khoản Telegram của bạn
+👉 Ví dụ: /info
+
+/ip <địa chỉ ip> - Kiểm tra thông tin IP (quốc gia, thành phố, ISP...)
+👉 Ví dụ: /ip 8.8.8.8
+
+/tiktok <link TikTok> - Tải video/ảnh TikTok chất lượng cao, không logo
+👉 Ví dụ: /tiktok https://www.tiktok.com/@username/video/123456789
 
 📌 Ngoài ra bot sẽ tự động **chào mừng thành viên mới** khi họ tham gia nhóm.
 """
@@ -52,48 +58,29 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ==== /time ====
 async def time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        # Danh sách thành phố + alias để người dùng gõ dễ hơn
+        # Danh sách thành phố + múi giờ
         cities = {
             "vietnam": ("🇻🇳 Việt Nam", "Asia/Ho_Chi_Minh"),
-            "vn": ("🇻🇳 Việt Nam", "Asia/Ho_Chi_Minh"),
             "dubai": ("🇦🇪 Dubai", "Asia/Dubai"),
             "usa": ("🇺🇸 Mỹ (New York)", "America/New_York"),
-            "us": ("🇺🇸 Mỹ (New York)", "America/New_York"),
-            "newyork": ("🇺🇸 Mỹ (New York)", "America/New_York"),
             "la": ("🇺🇸 Mỹ (Los Angeles)", "America/Los_Angeles"),
-            "losangeles": ("🇺🇸 Mỹ (Los Angeles)", "America/Los_Angeles"),
             "japan": ("🇯🇵 Nhật Bản", "Asia/Tokyo"),
-            "tokyo": ("🇯🇵 Nhật Bản", "Asia/Tokyo"),
-            "london": ("🇬🇧 London", "Europe/London"),
-            "uk": ("🇬🇧 London", "Europe/London"),
-            "anh": ("🇬🇧 London", "Europe/London"),
+            "london": ("🇬🇧 London", "Europe/London")
         }
 
-        # Nếu có đối số => lấy giờ riêng nước đó
         if context.args:
-            key = context.args[0].lower()
-            if key in cities:
-                city, tz = cities[key]
+            query = context.args[0].lower()
+            if query in cities:
+                city, tz = cities[query]
                 now = datetime.datetime.now(pytz.timezone(tz))
-                await update.message.reply_text(
-                    f"⏰ Giờ tại {city}: {now.strftime('%Y-%m-%d %H:%M:%S')}"
-                )
+                await update.message.reply_text(f"⏰ {city}: {now.strftime('%Y-%m-%d %H:%M:%S')}")
                 return
             else:
-                await update.message.reply_text("❌ Quốc gia này chưa hỗ trợ. Gõ /help để xem danh sách.")
+                await update.message.reply_text("❌ Quốc gia không hợp lệ. Gõ /help để xem danh sách.")
                 return
 
-        # Nếu không có đối số => in tất cả
         result = "⏰ **Giờ thế giới hiện tại:**\n\n"
-        world_timezones = {
-            "🇻🇳 Việt Nam": "Asia/Ho_Chi_Minh",
-            "🇦🇪 Dubai": "Asia/Dubai",
-            "🇺🇸 Mỹ (New York)": "America/New_York",
-            "🇺🇸 Mỹ (Los Angeles)": "America/Los_Angeles",
-            "🇯🇵 Nhật Bản": "Asia/Tokyo",
-            "🇬🇧 London": "Europe/London"
-        }
-        for city, tz in world_timezones.items():
+        for city, tz in cities.values():
             now = datetime.datetime.now(pytz.timezone(tz))
             result += f"{city}: {now.strftime('%Y-%m-%d %H:%M:%S')}\n"
 
@@ -105,7 +92,7 @@ async def time(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ==== /id ====
 async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
-    chat_id = update.message.chat.id
+    chat_id = update.message.chat_id
     await update.message.reply_text(f"🆔 User ID: {user_id}\n💬 Chat ID: {chat_id}")
 
 # ==== /info ====
@@ -143,7 +130,7 @@ def get_ip_info(ip):
     except Exception as e:
         return None, f"⚠️ Lỗi khi kiểm tra IP: {e}"
 
-async def check_ip(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def check_ip(update, context):
     if not context.args:
         await update.message.reply_text("👉 Dùng: /ip 8.8.8.8")
         return
@@ -156,7 +143,7 @@ async def check_ip(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(info)
 
 # ==== TikTok Downloader ====
-async def download_tiktok(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def download_tiktok(update, context):
     if not context.args:
         await update.message.reply_text("👉 Dùng: /tiktok <link TikTok>")
         return
