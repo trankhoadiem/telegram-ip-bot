@@ -1,4 +1,3 @@
-import asyncio
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import requests
@@ -6,7 +5,7 @@ import datetime
 import pytz
 
 # ==== TOKEN ====
-TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"  # thay bằng token thật
+TOKEN = "8409398524:AAG7pxkslC_fLUWvvcGLgmZwWQ-oXZqP5Hg"
 
 # ==== TikTok API ====
 TIKWM_API = "https://www.tikwm.com/api/"
@@ -16,7 +15,7 @@ HEADERS = {
 }
 
 # ==== /start ====
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def start(update, context):
     await update.message.reply_text(
         "✨ **Chào mừng bạn đến với BOT Tiện Ích** ✨\n\n"
         "🤖 Công cụ tra cứu IP, tải TikTok video/ảnh chất lượng cao và nhiều tiện ích khác.\n\n"
@@ -28,16 +27,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 # ==== /help ====
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def help_command(update, context):
     text = """
 📖 **Hướng dẫn sử dụng BOT:**
 
 /start - Giới thiệu bot & tác giả
 /help - Hiển thị hướng dẫn chi tiết
 
-/time - Xem thời gian hiện tại nhiều quốc gia
-👉 Ví dụ: /time
-👉 Hoặc: /time vietnam, /time dubai, /time usa
+/time <quốc gia> - Xem thời gian hiện tại
+👉 Ví dụ: /time vietnam, /time dubai, /time usa
 
 /id - Xem ID của bạn và ID nhóm/chat
 👉 Ví dụ: /id
@@ -45,10 +43,10 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 /info - Xem thông tin tài khoản Telegram của bạn
 👉 Ví dụ: /info
 
-/ip <địa chỉ ip> - Kiểm tra thông tin IP
+/ip <địa chỉ ip> - Kiểm tra thông tin IP (quốc gia, thành phố, ISP...)
 👉 Ví dụ: /ip 8.8.8.8
 
-/tiktok <link TikTok> - Tải video/ảnh TikTok không logo
+/tiktok <link TikTok> - Tải video/ảnh TikTok chất lượng cao, không logo
 👉 Ví dụ: /tiktok https://www.tiktok.com/@username/video/123456789
 
 📌 Ngoài ra bot sẽ tự động **chào mừng thành viên mới** khi họ tham gia nhóm.
@@ -56,33 +54,33 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text, disable_web_page_preview=True)
 
 # ==== /time ====
+TIMEZONES = {
+    "vietnam": "Asia/Ho_Chi_Minh",
+    "vn": "Asia/Ho_Chi_Minh",
+    "dubai": "Asia/Dubai",
+    "uae": "Asia/Dubai",
+    "usa": "America/New_York",
+    "my": "America/New_York",
+    "newyork": "America/New_York",
+    "london": "Europe/London",
+    "uk": "Europe/London",
+    "tokyo": "Asia/Tokyo",
+    "japan": "Asia/Tokyo"
+}
+
 async def time(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    cities = {
-        "vietnam": ("🇻🇳 Việt Nam", "Asia/Ho_Chi_Minh"),
-        "dubai": ("🇦🇪 Dubai", "Asia/Dubai"),
-        "usa": ("🇺🇸 Mỹ (New York)", "America/New_York"),
-        "la": ("🇺🇸 Mỹ (Los Angeles)", "America/Los_Angeles"),
-        "japan": ("🇯🇵 Nhật Bản", "Asia/Tokyo"),
-        "london": ("🇬🇧 London", "Europe/London")
-    }
-
     if context.args:
-        query = context.args[0].lower()
-        if query in cities:
-            city, tz = cities[query]
-            now = datetime.datetime.now(pytz.timezone(tz))
-            await update.message.reply_text(f"⏰ {city}: {now.strftime('%Y-%m-%d %H:%M:%S')}")
-            return
+        country = context.args[0].lower()
+        if country in TIMEZONES:
+            tz = pytz.timezone(TIMEZONES[country])
+            now = datetime.datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+            await update.message.reply_text(f"⏰ Thời gian hiện tại ở {country.title()}: {now}")
         else:
-            await update.message.reply_text("❌ Quốc gia không hợp lệ. Gõ /help để xem danh sách.")
-            return
-
-    result = "⏰ **Giờ thế giới hiện tại:**\n\n"
-    for city, tz in cities.values():
-        now = datetime.datetime.now(pytz.timezone(tz))
-        result += f"{city}: {now.strftime('%Y-%m-%d %H:%M:%S')}\n"
-
-    await update.message.reply_text(result)
+            await update.message.reply_text("❌ Quốc gia không được hỗ trợ. Gõ /help để xem gợi ý.")
+    else:
+        vn_tz = pytz.timezone("Asia/Ho_Chi_Minh")
+        now = datetime.datetime.now(vn_tz).strftime("%Y-%m-%d %H:%M:%S")
+        await update.message.reply_text(f"⏰ Thời gian hiện tại (Việt Nam): {now}")
 
 # ==== /id ====
 async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -103,26 +101,29 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ==== Check IP ====
 def get_ip_info(ip):
-    url = f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query"
-    res = requests.get(url, timeout=15).json()
+    try:
+        url = f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query"
+        res = requests.get(url, timeout=15).json()
 
-    if res.get("status") == "fail":
-        return None, f"❌ Không tìm thấy thông tin cho IP: {ip}"
+        if res.get("status") == "fail":
+            return None, f"❌ Không tìm thấy thông tin cho IP: {ip}"
 
-    info = (
-        f"🌍 Thông tin IP {res['query']}:\n"
-        f"🗺 Quốc gia: {res['country']} ({res['countryCode']})\n"
-        f"🏙 Khu vực: {res['regionName']} - {res['city']} ({res.get('zip','')})\n"
-        f"🕒 Múi giờ: {res['timezone']}\n"
-        f"📍 Toạ độ: {res['lat']}, {res['lon']}\n"
-        f"📡 ISP: {res['isp']}\n"
-        f"🏢 Tổ chức: {res['org']}\n"
-        f"🔗 AS: {res['as']}"
-    )
-    flag_url = f"https://flagcdn.com/w320/{res['countryCode'].lower()}.png"
-    return flag_url, info
+        info = (
+            f"🌍 Thông tin IP {res['query']}:\n"
+            f"🗺 Quốc gia: {res['country']} ({res['countryCode']})\n"
+            f"🏙 Khu vực: {res['regionName']} - {res['city']} ({res.get('zip','')})\n"
+            f"🕒 Múi giờ: {res['timezone']}\n"
+            f"📍 Toạ độ: {res['lat']}, {res['lon']}\n"
+            f"📡 ISP: {res['isp']}\n"
+            f"🏢 Tổ chức: {res['org']}\n"
+            f"🔗 AS: {res['as']}"
+        )
+        flag_url = f"https://flagcdn.com/w320/{res['countryCode'].lower()}.png"
+        return flag_url, info
+    except Exception as e:
+        return None, f"⚠️ Lỗi khi kiểm tra IP: {e}"
 
-async def check_ip(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def check_ip(update, context):
     if not context.args:
         await update.message.reply_text("👉 Dùng: /ip 8.8.8.8")
         return
@@ -135,7 +136,7 @@ async def check_ip(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(info)
 
 # ==== TikTok Downloader ====
-async def download_tiktok(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def download_tiktok(update, context):
     if not context.args:
         await update.message.reply_text("👉 Dùng: /tiktok <link TikTok>")
         return
@@ -154,11 +155,13 @@ async def download_tiktok(update: Update, context: ContextTypes.DEFAULT_TYPE):
         data = data_json["data"]
         title = data.get("title", "TikTok")
 
+        # Nếu là video
         if data.get("hdplay") or data.get("play"):
             url = data.get("hdplay") or data.get("play")
             await waiting_msg.delete()
             await update.message.reply_video(url, caption=f"🎬 {title} (chất lượng cao)")
 
+        # Nếu là bài ảnh
         elif data.get("images"):
             await waiting_msg.edit_text(f"🖼 {title}\n\nĐang gửi ảnh...")
             for img_url in data["images"]:
@@ -178,9 +181,10 @@ async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 # ==== MAIN ====
-async def main():
+def main():
     app = Application.builder().token(TOKEN).build()
 
+    # Commands
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("time", time))
@@ -188,10 +192,12 @@ async def main():
     app.add_handler(CommandHandler("info", info))
     app.add_handler(CommandHandler("ip", check_ip))
     app.add_handler(CommandHandler("tiktok", download_tiktok))
+
+    # Welcome new members
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
 
     print("🤖 Bot đang chạy...")
-    await app.run_polling()
+    app.run_polling()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
