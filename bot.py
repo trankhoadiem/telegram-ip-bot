@@ -1,12 +1,23 @@
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import requests
-import datetime
-import pytz
 import os
+import sys
+import openai
+import google.generativeai as genai
 
-# ==== TOKEN (lấy từ Railway ENV) ====
-TOKEN = os.getenv("TOKEN")  # Bạn set ở Railway Variables
+# ==== TOKEN & API KEYS ====
+TOKEN = os.environ.get("TOKEN")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+XAI_API_KEY = os.environ.get("XAI_API_KEY")
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")   # Gemini key
+
+# ==== ADMIN ====
+ADMIN_USERNAME = "DuRinn_LeTuanDiem"
+
+def is_admin(update: Update):
+    user = update.effective_user
+    return user and user.username == ADMIN_USERNAME
 
 # ==== TikTok API ====
 TIKWM_API = "https://www.tikwm.com/api/"
@@ -15,145 +26,230 @@ HEADERS = {
     "Referer": "https://www.tikwm.com/"
 }
 
-# ==== /start ====
+# =======================
+# 🚀 AI MODE
+# =======================
+
+async def ai_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["ai_mode"] = None
+    await update.message.reply_text(
+        "🤖 Đã bật **Chế độ AI**\n\n"
+        "👉 Chọn model để trò chuyện:\n"
+        "🧠 /gpt - ChatGPT\n"
+        "🦉 /grok - Grok\n"
+        "🌌 /gemini - Gemini\n"
+        "❌ /exit - Thoát chế độ AI"
+    )
+
+async def exit_ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["ai_mode"] = None
+    await update.message.reply_text("✅ Bạn đã thoát khỏi **Chế độ AI**.")
+
+# chọn model
+async def gpt(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["ai_mode"] = "gpt"
+    await update.message.reply_text("🧠 Bạn đang trò chuyện với **ChatGPT**. Hãy nhập tin nhắn... (/exit để thoát)")
+
+async def grok(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["ai_mode"] = "grok"
+    await update.message.reply_text("🦉 Bạn đang trò chuyện với **Grok**. Hãy nhập tin nhắn... (/exit để thoát)")
+
+async def gemini(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["ai_mode"] = "gemini"
+    await update.message.reply_text("🌌 Bạn đang trò chuyện với **Gemini**. Hãy nhập tin nhắn... (/exit để thoát)")
+
+# xử lý tin nhắn khi đang trong chế độ AI
+async def handle_ai_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    mode = context.user_data.get("ai_mode")
+    if not mode:
+        return
+
+    query = update.message.text.strip()
+
+    thinking_msg = await update.message.reply_text("⏳ Đang suy nghĩ...")
+    try:
+        await update.message.delete()
+    except:
+        pass
+
+    try:
+        if mode == "gpt":
+            openai.api_key = OPENAI_API_KEY
+            res = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": query}]
+            )
+            reply = res.choices[0].message["content"]
+
+        elif mode == "grok":
+            headers = {"Authorization": f"Bearer {XAI_API_KEY}"}
+            resp = requests.post(
+                "https://api.x.ai/v1/chat/completions",
+                headers=headers,
+                json={"model": "grok-4-0709", "messages": [{"role": "user", "content": query}]}
+            )
+            data = resp.json()
+            reply = data["choices"][0]["message"]["content"]
+
+        elif mode == "gemini":
+            genai.configure(api_key=GOOGLE_API_KEY)
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            resp = model.generate_content(query)
+            reply = resp.text
+
+        else:
+            reply = "⚠️ Chưa chọn model AI."
+    except Exception as e:
+        reply = f"⚠️ Lỗi {mode.upper()}: {e}"
+
+    await thinking_msg.edit_text(reply)
+
+# =======================
+# 🚀 Admin Commands
+# =======================
+async def shutdown(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update):
+        await update.message.reply_text("⛔ Bạn không có quyền dùng lệnh này.")
+        return
+    await update.message.reply_text("🛑 Bot đang **tắt**...")
+    await context.application.stop()
+
+async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update):
+        await update.message.reply_text("⛔ Bạn không có quyền dùng lệnh này.")
+        return
+    await update.message.reply_text("♻️ Bot đang **khởi động lại**...")
+    os.execv(sys.executable, ["python"] + sys.argv)
+
+async def startbot(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update):
+        await update.message.reply_text("⛔ Bạn không có quyền dùng lệnh này.")
+        return
+    await update.message.reply_text("✅ Bot đang chạy bình thường!")
+
+# =======================
+# 🚀 Các lệnh khác
+# =======================
+
 async def start(update, context):
     await update.message.reply_text(
-        "✨ **Chào mừng bạn đến với BOT Tiện Ích** ✨\n\n"
-        "🤖 Công cụ tra cứu IP, tải TikTok video/ảnh chất lượng cao và nhiều tiện ích khác.\n\n"
-        "💡 Gõ /help để xem lệnh khả dụng."
+        "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
+        "🤖 Công cụ: 🌐 Kiểm tra IP | 🎬 Tải TikTok | 🤖 Chat AI (GPT, Grok, Gemini)\n\n"
+        "⚡ Bot vẫn đang **cập nhật hằng ngày**, có thể tồn tại một số lỗi.\n\n"
+        "📌 Thành viên phát triển BOT:\n"
+        "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
+        "   👤 Telegram Support – @Telegram\n"
+        "   🤖 Bot chính thức – @ToMinhDiem_bot\n\n"
+        "💡 Gõ /help để xem tất cả lệnh khả dụng."
     )
 
-# ==== /help ====
 async def help_command(update, context):
-    text = """
-📖 **Hướng dẫn sử dụng BOT:**
-
-/start - Giới thiệu bot
-/help - Hiển thị hướng dẫn chi tiết
-
-/time <quốc gia> - Xem giờ thế giới
-👉 Ví dụ: /time vietnam, /time dubai, /time usa
-
-/id - Xem ID của bạn
-/info - Xem thông tin tài khoản
-/ip <ip> - Kiểm tra thông tin IP
-/tiktok <link> - Tải video/ảnh TikTok không logo
-"""
-    await update.message.reply_text(text, disable_web_page_preview=True)
-
-# ==== /time ====
-TIMEZONES = {
-    "vietnam": "Asia/Ho_Chi_Minh",
-    "vn": "Asia/Ho_Chi_Minh",
-    "dubai": "Asia/Dubai",
-    "usa": "America/New_York",
-    "newyork": "America/New_York",
-    "losangeles": "America/Los_Angeles",
-    "london": "Europe/London",
-    "uk": "Europe/London",
-    "tokyo": "Asia/Tokyo",
-    "japan": "Asia/Tokyo"
-}
-
-async def time(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if context.args:
-        country = context.args[0].lower()
-        if country in TIMEZONES:
-            tz = pytz.timezone(TIMEZONES[country])
-            now = datetime.datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
-            await update.message.reply_text(f"⏰ {country.title()}: {now}")
-        else:
-            await update.message.reply_text("❌ Quốc gia không được hỗ trợ. Gõ /help để xem.")
-    else:
-        tz = pytz.timezone("Asia/Ho_Chi_Minh")
-        now = datetime.datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
-        await update.message.reply_text(f"⏰ Việt Nam: {now}")
-
-# ==== /id ====
-async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        f"🆔 User ID: {update.message.from_user.id}\n💬 Chat ID: {update.message.chat_id}"
+        "📖 **Danh sách lệnh khả dụng**:\n\n"
+        "🚀 /start - Bắt đầu\n"
+        "🛠 /help - Trợ giúp\n"
+        "🤖 /ai - Bật Chế độ AI (GPT, Grok, Gemini)\n"
+        "🌐 /ip <ip> - Kiểm tra IP\n"
+        "🎬 /tiktok <link> - Tải TikTok\n\n"
+        "🔒 **Lệnh Admin** (@DuRinn_LeTuanDiem):\n"
+        "🛑 /shutdown - Tắt bot\n"
+        "♻️ /restart - Khởi động lại bot\n"
+        "✅ /startbot - Kiểm tra bot"
     )
 
-# ==== /info ====
-async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.message.from_user
-    await update.message.reply_text(
-        f"👤 Họ tên: {user.first_name} {user.last_name or ''}\n"
-        f"🔗 Username: @{user.username}\n"
-        f"🆔 ID: {user.id}"
-    )
-
-# ==== IP Lookup ====
 def get_ip_info(ip):
     try:
         url = f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query"
         res = requests.get(url, timeout=15).json()
         if res.get("status") == "fail":
             return None, f"❌ Không tìm thấy thông tin cho IP: {ip}"
-
         info = (
-            f"🌍 IP {res['query']}:\n"
-            f"🗺 Quốc gia: {res['country']} ({res['countryCode']})\n"
-            f"🏙 Thành phố: {res['city']} ({res['regionName']})\n"
+            f"🌐 Thông tin IP {res['query']}:\n"
+            f"🏳️ Quốc gia: {res['country']} ({res['countryCode']})\n"
+            f"🏙 Thành phố: {res['regionName']} - {res['city']} ({res.get('zip','')})\n"
             f"🕒 Múi giờ: {res['timezone']}\n"
+            f"📍 Tọa độ: {res['lat']}, {res['lon']}\n"
             f"📡 ISP: {res['isp']}\n"
-            f"🏢 Tổ chức: {res['org']}"
+            f"🏢 Tổ chức: {res['org']}\n"
+            f"🔗 AS: {res['as']}"
         )
-        return None, info
+        flag_url = f"https://flagcdn.com/w320/{res['countryCode'].lower()}.png"
+        return flag_url, info
     except Exception as e:
-        return None, f"⚠️ Lỗi: {e}"
+        return None, f"⚠️ Lỗi khi kiểm tra IP: {e}"
 
 async def check_ip(update, context):
     if not context.args:
         await update.message.reply_text("👉 Dùng: /ip 8.8.8.8")
         return
-    _, info = get_ip_info(context.args[0].strip())
-    await update.message.reply_text(info)
+    ip = context.args[0].strip()
+    flag_url, info = get_ip_info(ip)
+    if flag_url:
+        await update.message.reply_photo(flag_url, caption=info)
+    else:
+        await update.message.reply_text(info)
 
-# ==== TikTok Downloader ====
 async def download_tiktok(update, context):
     if not context.args:
         await update.message.reply_text("👉 Dùng: /tiktok <link TikTok>")
         return
-
-    waiting_msg = await update.message.reply_text("⏳ Đang tải TikTok...")
-
+    link = context.args[0].strip()
+    waiting_msg = await update.message.reply_text("⏳ Đang xử lý link TikTok...")
     try:
-        res = requests.post(TIKWM_API, data={"url": context.args[0]}, headers=HEADERS, timeout=20)
-        data = res.json()
-        if data.get("code") != 0 or "data" not in data:
-            await waiting_msg.edit_text("❌ Không tải được video!")
+        res = requests.post(TIKWM_API, data={"url": link}, headers=HEADERS, timeout=20)
+        data_json = res.json()
+        if data_json.get("code") != 0 or "data" not in data_json:
+            await waiting_msg.edit_text("❌ Không tải được TikTok. Vui lòng kiểm tra lại link!")
             return
-
-        d = data["data"]
-        if d.get("hdplay") or d.get("play"):
+        data = data_json["data"]
+        title = data.get("title", "TikTok")
+        if data.get("hdplay") or data.get("play"):
+            url = data.get("hdplay") or data.get("play")
             await waiting_msg.delete()
-            await update.message.reply_video(d.get("hdplay") or d.get("play"))
-        elif d.get("images"):
-            for img in d["images"]:
-                await update.message.reply_photo(img)
+            await update.message.reply_video(url, caption=f"🎬 {title} (HQ)")
+        elif data.get("images"):
+            await waiting_msg.edit_text(f"🖼 {title}\n\nĐang gửi ảnh...")
+            for img_url in data["images"]:
+                await update.message.reply_photo(img_url)
         else:
-            await waiting_msg.edit_text("⚠️ Không tìm thấy video/ảnh.")
+            await waiting_msg.edit_text("⚠️ Không tìm thấy video/ảnh trong link này.")
     except Exception as e:
-        await waiting_msg.edit_text(f"⚠️ Lỗi: {e}")
+        await waiting_msg.edit_text(f"⚠️ Lỗi khi tải TikTok: {e}")
 
-# ==== Welcome ====
 async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for member in update.message.new_chat_members:
-        await update.message.reply_text(f"🎉 Chào mừng {member.full_name}!")
+        await update.message.reply_text(
+            f"🎉👋 Chào mừng {member.full_name} đã tham gia nhóm {update.message.chat.title}!"
+        )
 
-# ==== MAIN ====
+# =======================
+# 🚀 MAIN
+# =======================
 def main():
     app = Application.builder().token(TOKEN).build()
+
+    # AI
+    app.add_handler(CommandHandler("ai", ai_mode))
+    app.add_handler(CommandHandler("exit", exit_ai))
+    app.add_handler(CommandHandler("gpt", gpt))
+    app.add_handler(CommandHandler("grok", grok))
+    app.add_handler(CommandHandler("gemini", gemini))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_ai_message))
+
+    # Tools
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(CommandHandler("time", time))
-    app.add_handler(CommandHandler("id", get_id))
-    app.add_handler(CommandHandler("info", info))
     app.add_handler(CommandHandler("ip", check_ip))
     app.add_handler(CommandHandler("tiktok", download_tiktok))
+
+    # Admin
+    app.add_handler(CommandHandler("shutdown", shutdown))
+    app.add_handler(CommandHandler("restart", restart))
+    app.add_handler(CommandHandler("startbot", startbot))
+
+    # Welcome
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
+
     print("🤖 Bot đang chạy...")
     app.run_polling()
 
