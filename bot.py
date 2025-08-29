@@ -1,4 +1,4 @@
-from telegram import Update 
+from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import requests
 import os
@@ -17,56 +17,71 @@ HEADERS = {
 async def start(update, context):
     await update.message.reply_text(
         "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
-        "🤖 Công cụ: 🌐 Kiểm tra IP | 🎬 Tải TikTok\n\n"
-        "⚡ Bot vẫn đang **cập nhật hằng ngày**, có thể tồn tại một số lỗi.\n\n"
-        "📌 Thành viên phát triển BOT:\n"
+        "🤖 Công cụ tra cứu IP & tải TikTok video/ảnh chất lượng cao.\n\n"
+        "📌 Các thành viên phát triển BOT:\n"
         "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
         "   👤 Telegram Support – @Telegram\n"
         "   🤖 Bot chính thức – @ToMinhDiem_bot\n\n"
-        "💡 Gõ /help để xem tất cả lệnh khả dụng."
+        "💡 Gõ /help để xem lệnh khả dụng."
     )
 
 # ==== /help ====
 async def help_command(update, context):
     await update.message.reply_text(
-        "📖 **Hướng dẫn sử dụng BOT chi tiết** 📖\n\n"
-        "🔹 /start - Giới thiệu bot và thông tin cơ bản.\n"
-        "🔹 /help - Hiển thị danh sách lệnh kèm mô tả chi tiết.\n"
-        "🔹 /ip <ip> - Kiểm tra thông tin chi tiết của một địa chỉ IP.\n"
-        "🔹 /tiktok <link> - Tải video/ảnh TikTok không watermark.\n\n"
-        "🔒 **Lệnh Admin**:\n"
-        "   • /shutdown - Tắt bot.\n"
-        "   • /restart - Khởi động lại bot.\n"
-        "   • /startbot - Kiểm tra bot đang chạy.\n"
+        "📖 Lệnh có sẵn:\n\n"
+        "/start - Bắt đầu\n"
+        "/help - Trợ giúp\n"
+        "/ip <địa chỉ ip> - Kiểm tra thông tin IP\n"
+        "/tiktok <link> - Tải video/ảnh TikTok chất lượng cao\n"
+        "/ai - Vào chế độ Chat AI (chỉ sử dụng lệnh gemini)\n"
+        "/gemini - Chế độ Gemini AI\n"
+        "/grok - Đang bảo trì, bot sẽ cập nhật sớm\n"
+        "/gpt - Đang bảo trì, bot sẽ cập nhật sớm\n"
+        "/seek - Đang bảo trì, bot sẽ cập nhật sớm"
     )
 
-# ==== Kiểm tra IP ====
-async def check_ip(update, context):
-    if not context.args:
-        await update.message.reply_text("👉 Dùng: /ip <địa chỉ IP>")
-        return
-    
-    ip = context.args[0]
-    url = f"http://ip-api.com/json/{ip}?fields=status,message,country,regionName,city,query,isp,org"
+# ==== Check IP ====
+def get_ip_info(ip):
     try:
-        res = requests.get(url, timeout=10).json()
-        if res.get("status") != "success":
-            await update.message.reply_text(f"❌ Lỗi: {res.get('message', 'Không xác định')}")
-            return
+        url = f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query"
+        res = requests.get(url, timeout=15).json()
 
-        msg = (
-            f"🌍 **Thông tin IP {res['query']}**\n"
-            f"   • Quốc gia: {res['country']}\n"
-            f"   • Khu vực: {res['regionName']}\n"
-            f"   • Thành phố: {res['city']}\n"
-            f"   • ISP: {res['isp']}\n"
-            f"   • Tổ chức: {res['org']}"
+        if res.get("status") == "fail":
+            return None, f"❌ Không tìm thấy thông tin cho IP: {ip}"
+
+        info = (
+            f"🌍 Thông tin IP {res['query']}:\n"
+            f"🗺 Quốc gia: {res['country']} ({res['countryCode']})\n"
+            f"🏙 Khu vực: {res['regionName']} - {res['city']} ({res.get('zip','')})\n"
+            f"🕒 Múi giờ: {res['timezone']}\n"
+            f"📍 Toạ độ: {res['lat']}, {res['lon']}\n"
+            f"📡 ISP: {res['isp']}\n"
+            f"🏢 Tổ chức: {res['org']}\n"
+            f"🔗 AS: {res['as']}"
         )
-        await update.message.reply_text(msg)
+        flag_url = f"https://flagcdn.com/w320/{res['countryCode'].lower()}.png"
+        return flag_url, info
     except Exception as e:
-        await update.message.reply_text(f"⚠️ Lỗi khi kiểm tra IP: {e}")
+        return None, f"⚠️ Lỗi khi kiểm tra IP: {e}"
 
-# ==== Tải video TikTok ====
+async def check_ip(update, context):
+    try:
+        await update.message.delete()
+    except:
+        pass
+
+    if not context.args:
+        await update.message.reply_text("👉 Dùng: /ip 8.8.8.8")
+        return
+
+    ip = context.args[0].strip()
+    flag_url, info = get_ip_info(ip)
+    if flag_url:
+        await update.message.reply_photo(flag_url, caption=info)
+    else:
+        await update.message.reply_text(info)
+
+# ==== TikTok Downloader ====
 async def download_tiktok(update, context):
     try:
         await update.message.delete()
@@ -91,11 +106,13 @@ async def download_tiktok(update, context):
         data = data_json["data"]
         title = data.get("title", "TikTok")
 
+        # Nếu là video
         if data.get("hdplay") or data.get("play"):
             url = data.get("hdplay") or data.get("play")
             await waiting_msg.delete()
             await update.message.reply_video(url, caption=f"🎬 {title} (chất lượng cao nhất)")
 
+        # Nếu là bài ảnh
         elif data.get("images"):
             await waiting_msg.edit_text(f"🖼 {title}\n\nĐang gửi ảnh gốc...")
             for img_url in data["images"]:
@@ -103,17 +120,35 @@ async def download_tiktok(update, context):
 
         else:
             await waiting_msg.edit_text("⚠️ Không tìm thấy video/ảnh trong link này.")
+
     except Exception as e:
         await waiting_msg.edit_text(f"⚠️ Lỗi khi tải TikTok: {e}")
 
-# ==== Welcome New Member ====
-async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    for member in update.message.new_chat_members:
-        await update.message.reply_text(
-            f"🎉 Chào mừng {member.full_name} đã tham gia nhóm {update.message.chat.title}!"
-        )
+# ==== /ai ====
+async def ai_mode(update, context):
+    await update.message.reply_text(
+        "🎉 Bạn đã vào chế độ Chat AI.\n\n"
+        "Ứng dụng có sẵn:\n"
+        "/gemini - Chế độ Gemini AI\n"
+        "/grok - Đang bảo trì, bot sẽ cập nhật sớm\n"
+        "/gpt - Đang bảo trì, bot sẽ cập nhật sớm\n"
+        "/seek - Đang bảo trì, bot sẽ cập nhật sớm\n\n"
+        "Hãy sử dụng /gemini để bắt đầu!"
+    )
 
-# ==== Main ==== 
+# ==== /gemini ====
+async def gemini(update, context):
+    # Thực hiện hành động với Gemini, ví dụ như trả lời bằng một mô hình AI.
+    await update.message.reply_text("🌟 Bạn đã sử dụng Gemini AI! Chào bạn!")
+
+# ==== /grok, /gpt, /seek (Bảo trì) ====
+async def maintenance(update, context):
+    await update.message.reply_text(
+        "⚠️ Lệnh này đang bảo trì, bot sẽ cập nhật sớm.\n\n"
+        "Hãy thử lại sau!"
+    )
+
+# ==== Main ====
 def main():
     app = Application.builder().token(TOKEN).build()
 
@@ -122,9 +157,11 @@ def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("ip", check_ip))
     app.add_handler(CommandHandler("tiktok", download_tiktok))
-
-    # Welcome new members
-    app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
+    app.add_handler(CommandHandler("ai", ai_mode))
+    app.add_handler(CommandHandler("gemini", gemini))
+    app.add_handler(CommandHandler("grok", maintenance))
+    app.add_handler(CommandHandler("gpt", maintenance))
+    app.add_handler(CommandHandler("seek", maintenance))
 
     print("🤖 Bot đang chạy...")
     app.run_polling()
