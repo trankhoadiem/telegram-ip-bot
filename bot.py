@@ -1,12 +1,11 @@
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import requests
-import os
 from datetime import datetime
 import pytz
 
 # ==== TOKEN ====
-TOKEN = os.environ.get("TOKEN")
+TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"   # <-- điền token thật vào đây
 
 # ==== TikTok API ====
 TIKWM_API = "https://www.tikwm.com/api/"
@@ -34,42 +33,34 @@ async def help_command(update, context):
         "/start - Giới thiệu bot\n"
         "/help - Danh sách lệnh\n\n"
         "/ip <địa chỉ ip> - Kiểm tra thông tin IP\n"
-        "   👉 Ví dụ: /ip 8.8.8.8\n\n"
+        "👉 Ví dụ: /ip 8.8.8.8\n\n"
         "/tiktok <link> - Tải video/ảnh TikTok chất lượng cao\n"
-        "   👉 Ví dụ: /tiktok https://www.tiktok.com/xxxx\n\n"
+        "👉 Ví dụ: /tiktok https://www.tiktok.com/xxxx\n\n"
         "/time - Xem giờ thế giới (ưu tiên Việt Nam hiển thị đầu tiên)\n"
     )
 
 # ==== Check IP ====
 def get_ip_info(ip):
-    try:
-        url = f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query"
-        res = requests.get(url, timeout=15).json()
+    url = f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query"
+    res = requests.get(url, timeout=15).json()
 
-        if res.get("status") == "fail":
-            return None, f"❌ Không tìm thấy thông tin cho IP: {ip}"
+    if res.get("status") == "fail":
+        return None, f"❌ Không tìm thấy thông tin cho IP: {ip}"
 
-        info = (
-            f"🌍 Thông tin IP {res['query']}:\n"
-            f"🗺 Quốc gia: {res['country']} ({res['countryCode']})\n"
-            f"🏙 Khu vực: {res['regionName']} - {res['city']} ({res.get('zip','')})\n"
-            f"🕒 Múi giờ: {res['timezone']}\n"
-            f"📍 Toạ độ: {res['lat']}, {res['lon']}\n"
-            f"📡 ISP: {res['isp']}\n"
-            f"🏢 Tổ chức: {res['org']}\n"
-            f"🔗 AS: {res['as']}"
-        )
-        flag_url = f"https://flagcdn.com/w320/{res['countryCode'].lower()}.png"
-        return flag_url, info
-    except Exception as e:
-        return None, f"⚠️ Lỗi khi kiểm tra IP: {e}"
+    info = (
+        f"🌍 Thông tin IP {res['query']}:\n"
+        f"🗺 Quốc gia: {res['country']} ({res['countryCode']})\n"
+        f"🏙 Khu vực: {res['regionName']} - {res['city']} ({res.get('zip','')})\n"
+        f"🕒 Múi giờ: {res['timezone']}\n"
+        f"📍 Toạ độ: {res['lat']}, {res['lon']}\n"
+        f"📡 ISP: {res['isp']}\n"
+        f"🏢 Tổ chức: {res['org']}\n"
+        f"🔗 AS: {res['as']}"
+    )
+    flag_url = f"https://flagcdn.com/w320/{res['countryCode'].lower()}.png"
+    return flag_url, info
 
 async def check_ip(update, context):
-    try:
-        await update.message.delete()
-    except:
-        pass
-
     if not context.args:
         await update.message.reply_text("👉 Dùng: /ip 8.8.8.8")
         return
@@ -83,11 +74,6 @@ async def check_ip(update, context):
 
 # ==== TikTok Downloader ====
 async def download_tiktok(update, context):
-    try:
-        await update.message.delete()
-    except:
-        pass
-
     if not context.args:
         await update.message.reply_text("👉 Dùng: /tiktok <link TikTok>")
         return
@@ -126,11 +112,6 @@ async def download_tiktok(update, context):
 
 # ==== World Time ====
 async def world_time(update, context):
-    try:
-        await update.message.delete()
-    except:
-        pass
-
     zones = [
         ("🇻🇳 Việt Nam", "Asia/Ho_Chi_Minh"),
         ("🇯🇵 Nhật Bản", "Asia/Tokyo"),
