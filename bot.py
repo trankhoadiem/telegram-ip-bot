@@ -2,6 +2,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import requests
 import datetime
+import pytz
 import os
 
 # ==== TOKEN ====
@@ -34,8 +35,14 @@ async def help_command(update, context):
 /start - Giới thiệu bot & tác giả
 /help - Hiển thị hướng dẫn chi tiết
 
-/time - Xem thời gian hiện tại
-👉 Ví dụ: /time
+/time - Xem giờ thế giới (Việt Nam, Dubai, Mỹ, Nhật, Anh)
+/time <quốc gia> - Xem giờ riêng 1 nước
+👉 Ví dụ:
+/time vietnam
+/time dubai
+/time usa
+/time japan
+/time london
 
 /id - Xem ID của bạn và ID nhóm/chat
 👉 Ví dụ: /id
@@ -43,20 +50,69 @@ async def help_command(update, context):
 /info - Xem thông tin tài khoản Telegram của bạn
 👉 Ví dụ: /info
 
-/ip <địa chỉ ip> - Kiểm tra thông tin IP (quốc gia, thành phố, ISP...)
+/ip <địa chỉ ip> - Kiểm tra thông tin IP
 👉 Ví dụ: /ip 8.8.8.8
 
-/tiktok <link TikTok> - Tải video/ảnh TikTok chất lượng cao, không logo
+/tiktok <link TikTok> - Tải video/ảnh TikTok chất lượng cao
 👉 Ví dụ: /tiktok https://www.tiktok.com/@username/video/123456789
 
 📌 Ngoài ra bot sẽ tự động **chào mừng thành viên mới** khi họ tham gia nhóm.
 """
     await update.message.reply_text(text, disable_web_page_preview=True)
 
+
 # ==== /time ====
 async def time(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    await update.message.reply_text(f"⏰ Thời gian hiện tại: {now}")
+    try:
+        # Danh sách thành phố + alias để người dùng gõ dễ hơn
+        cities = {
+            "vietnam": ("🇻🇳 Việt Nam", "Asia/Ho_Chi_Minh"),
+            "vn": ("🇻🇳 Việt Nam", "Asia/Ho_Chi_Minh"),
+            "dubai": ("🇦🇪 Dubai", "Asia/Dubai"),
+            "usa": ("🇺🇸 Mỹ (New York)", "America/New_York"),
+            "us": ("🇺🇸 Mỹ (New York)", "America/New_York"),
+            "newyork": ("🇺🇸 Mỹ (New York)", "America/New_York"),
+            "la": ("🇺🇸 Mỹ (Los Angeles)", "America/Los_Angeles"),
+            "losangeles": ("🇺🇸 Mỹ (Los Angeles)", "America/Los_Angeles"),
+            "japan": ("🇯🇵 Nhật Bản", "Asia/Tokyo"),
+            "tokyo": ("🇯🇵 Nhật Bản", "Asia/Tokyo"),
+            "london": ("🇬🇧 London", "Europe/London"),
+            "uk": ("🇬🇧 London", "Europe/London"),
+            "anh": ("🇬🇧 London", "Europe/London"),
+        }
+
+        # Nếu có đối số => lấy giờ riêng nước đó
+        if context.args:
+            key = context.args[0].lower()
+            if key in cities:
+                city, tz = cities[key]
+                now = datetime.datetime.now(pytz.timezone(tz))
+                await update.message.reply_text(
+                    f"⏰ Giờ tại {city}: {now.strftime('%Y-%m-%d %H:%M:%S')}"
+                )
+                return
+            else:
+                await update.message.reply_text("❌ Quốc gia này chưa hỗ trợ. Gõ /help để xem danh sách.")
+                return
+
+        # Nếu không có đối số => in tất cả
+        result = "⏰ **Giờ thế giới hiện tại:**\n\n"
+        for city, tz in {
+            "🇻🇳 Việt Nam": "Asia/Ho_Chi_Minh",
+            "🇦🇪 Dubai": "Asia/Dubai",
+            "🇺🇸 Mỹ (New York)": "America/New_York",
+            "🇺🇸 Mỹ (Los Angeles)": "America/Los_Angeles",
+            "🇯🇵 Nhật Bản": "Asia/Tokyo",
+            "🇬🇧 London": "Europe/London"
+        }.items():
+            now = datetime.datetime.now(pytz.timezone(tz))
+            result += f"{city}: {now.strftime('%Y-%m-%d %H:%M:%S')}\n"
+
+        await update.message.reply_text(result)
+
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ Lỗi khi lấy giờ: {e}")
+
 
 # ==== /id ====
 async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
