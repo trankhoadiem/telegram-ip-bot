@@ -36,12 +36,12 @@ async def help_command(update, context):
         "/help - Trợ giúp\n"
         "/ip <địa chỉ ip> - Kiểm tra thông tin IP\n"
         "/tiktok <link> - Tải video/ảnh TikTok chất lượng cao\n"
-        "/testapi - Kiểm tra kết nối API\n"
-        "/ai - Vào chế độ Chat AI (chỉ sử dụng lệnh gemini)\n"
+        "/testapi - Kiểm tra kết nối với API\n"
+        "/ai - Vào chế độ Chat AI (chỉ /gemini hoạt động)\n"
         "/gemini - Chế độ Gemini AI (chat liên tục)\n"
-        "/grok - Đang bảo trì, bot sẽ cập nhật sớm\n"
-        "/gpt - Đang bảo trì, bot sẽ cập nhật sớm\n"
-        "/seek - Đang bảo trì, bot sẽ cập nhật sớm\n"
+        "/grok - Đang bảo trì\n"
+        "/gpt - Đang bảo trì\n"
+        "/seek - Đang bảo trì\n"
         "/exit - Thoát chế độ Chat AI"
     )
 
@@ -129,7 +129,7 @@ async def download_tiktok(update, context):
 # ==== /testapi ====
 async def testapi(update, context):
     try:
-        url = "https://api.example.com/healthcheck"  # Thay URL API của bạn
+        url = "https://myapi.com/status"  # Thay bằng API của bạn
         response = requests.get(url, timeout=10)
         if response.status_code == 200:
             await update.message.reply_text("✅ Kết nối API thành công! API đang hoạt động bình thường.")
@@ -144,9 +144,9 @@ async def ai_mode(update, context):
         "🎉 Bạn đã vào chế độ Chat AI.\n\n"
         "Ứng dụng có sẵn:\n"
         "/gemini - Chế độ Gemini AI (chat liên tục)\n"
-        "/grok - Đang bảo trì, bot sẽ cập nhật sớm\n"
-        "/gpt - Đang bảo trì, bot sẽ cập nhật sớm\n"
-        "/seek - Đang bảo trì, bot sẽ cập nhật sớm\n\n"
+        "/grok - Đang bảo trì\n"
+        "/gpt - Đang bảo trì\n"
+        "/seek - Đang bảo trì\n\n"
         "Hãy sử dụng /gemini để bắt đầu!"
     )
 
@@ -171,7 +171,7 @@ async def exit_chat(update, context):
 # ==== /grok, /gpt, /seek (Bảo trì) ====
 async def maintenance(update, context):
     await update.message.reply_text(
-        "⚠️ Lệnh này đang bảo trì, bot sẽ cập nhật sớm.\n\nHãy thử lại sau!"
+        "⚠️ Lệnh này đang bảo trì, bot sẽ cập nhật sớm.\nHãy thử lại sau!"
     )
 
 # ==== Xử lý tin nhắn khi đang chat Gemini ====
@@ -179,7 +179,7 @@ async def handle_message(update, context):
     user_id = update.message.from_user.id
     if user_sessions.get(user_id):
         user_input = update.message.text
-        reply = f"Gemini AI trả lời: {user_input}"  # Thay bằng API thực tế nếu muốn
+        reply = f"Gemini AI trả lời: {user_input}"  # Tạm thời trả lời mô phỏng
         await update.message.reply_text(reply)
 
 # ==== Main ====
@@ -199,7 +199,7 @@ def main():
     app.add_handler(CommandHandler("gpt", maintenance))
     app.add_handler(CommandHandler("seek", maintenance))
 
-    # Tin nhắn người dùng
+    # Message handler for Gemini chat
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     print("🤖 Bot đang chạy...")
