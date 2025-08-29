@@ -13,6 +13,9 @@ HEADERS = {
     "Referer": "https://www.tikwm.com/"
 }
 
+# ==== Trạng thái người dùng cho Gemini ====
+user_sessions = {}
+
 # ==== /start ====
 async def start(update, context):
     await update.message.reply_text(
@@ -33,11 +36,13 @@ async def help_command(update, context):
         "/help - Trợ giúp\n"
         "/ip <địa chỉ ip> - Kiểm tra thông tin IP\n"
         "/tiktok <link> - Tải video/ảnh TikTok chất lượng cao\n"
+        "/testapi - Kiểm tra kết nối API\n"
         "/ai - Vào chế độ Chat AI (chỉ sử dụng lệnh gemini)\n"
-        "/gemini - Chế độ Gemini AI\n"
+        "/gemini - Chế độ Gemini AI (chat liên tục)\n"
         "/grok - Đang bảo trì, bot sẽ cập nhật sớm\n"
         "/gpt - Đang bảo trì, bot sẽ cập nhật sớm\n"
-        "/seek - Đang bảo trì, bot sẽ cập nhật sớm"
+        "/seek - Đang bảo trì, bot sẽ cập nhật sớm\n"
+        "/exit - Thoát chế độ Chat AI"
     )
 
 # ==== Check IP ====
@@ -106,30 +111,39 @@ async def download_tiktok(update, context):
         data = data_json["data"]
         title = data.get("title", "TikTok")
 
-        # Nếu là video
         if data.get("hdplay") or data.get("play"):
             url = data.get("hdplay") or data.get("play")
             await waiting_msg.delete()
             await update.message.reply_video(url, caption=f"🎬 {title} (chất lượng cao nhất)")
 
-        # Nếu là bài ảnh
         elif data.get("images"):
             await waiting_msg.edit_text(f"🖼 {title}\n\nĐang gửi ảnh gốc...")
             for img_url in data["images"]:
                 await update.message.reply_photo(img_url)
-
         else:
             await waiting_msg.edit_text("⚠️ Không tìm thấy video/ảnh trong link này.")
 
     except Exception as e:
         await waiting_msg.edit_text(f"⚠️ Lỗi khi tải TikTok: {e}")
 
+# ==== /testapi ====
+async def testapi(update, context):
+    try:
+        url = "https://api.example.com/healthcheck"  # Thay URL API của bạn
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            await update.message.reply_text("✅ Kết nối API thành công! API đang hoạt động bình thường.")
+        else:
+            await update.message.reply_text(f"⚠️ API không phản hồi đúng. Mã lỗi: {response.status_code}")
+    except requests.RequestException as e:
+        await update.message.reply_text(f"❌ Lỗi kết nối API: {e}")
+
 # ==== /ai ====
 async def ai_mode(update, context):
     await update.message.reply_text(
         "🎉 Bạn đã vào chế độ Chat AI.\n\n"
         "Ứng dụng có sẵn:\n"
-        "/gemini - Chế độ Gemini AI\n"
+        "/gemini - Chế độ Gemini AI (chat liên tục)\n"
         "/grok - Đang bảo trì, bot sẽ cập nhật sớm\n"
         "/gpt - Đang bảo trì, bot sẽ cập nhật sớm\n"
         "/seek - Đang bảo trì, bot sẽ cập nhật sớm\n\n"
@@ -138,15 +152,35 @@ async def ai_mode(update, context):
 
 # ==== /gemini ====
 async def gemini(update, context):
-    # Thực hiện hành động với Gemini, ví dụ như trả lời bằng một mô hình AI.
-    await update.message.reply_text("🌟 Bạn đã sử dụng Gemini AI! Chào bạn!")
+    user_id = update.message.from_user.id
+    user_sessions[user_id] = True
+    await update.message.reply_text(
+        "🌟 Bạn đã vào chế độ Gemini AI! Nhắn tin gì đi, bot sẽ trả lời bạn. "
+        "Gõ /exit để thoát chế độ chat."
+    )
+
+# ==== /exit ====
+async def exit_chat(update, context):
+    user_id = update.message.from_user.id
+    if user_sessions.get(user_id):
+        user_sessions.pop(user_id, None)
+        await update.message.reply_text("✅ Bạn đã thoát chế độ Gemini AI.")
+    else:
+        await update.message.reply_text("⚠️ Bạn không đang trong chế độ Chat AI.")
 
 # ==== /grok, /gpt, /seek (Bảo trì) ====
 async def maintenance(update, context):
     await update.message.reply_text(
-        "⚠️ Lệnh này đang bảo trì, bot sẽ cập nhật sớm.\n\n"
-        "Hãy thử lại sau!"
+        "⚠️ Lệnh này đang bảo trì, bot sẽ cập nhật sớm.\n\nHãy thử lại sau!"
     )
+
+# ==== Xử lý tin nhắn khi đang chat Gemini ====
+async def handle_message(update, context):
+    user_id = update.message.from_user.id
+    if user_sessions.get(user_id):
+        user_input = update.message.text
+        reply = f"Gemini AI trả lời: {user_input}"  # Thay bằng API thực tế nếu muốn
+        await update.message.reply_text(reply)
 
 # ==== Main ====
 def main():
@@ -157,11 +191,16 @@ def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("ip", check_ip))
     app.add_handler(CommandHandler("tiktok", download_tiktok))
+    app.add_handler(CommandHandler("testapi", testapi))
     app.add_handler(CommandHandler("ai", ai_mode))
     app.add_handler(CommandHandler("gemini", gemini))
+    app.add_handler(CommandHandler("exit", exit_chat))
     app.add_handler(CommandHandler("grok", maintenance))
     app.add_handler(CommandHandler("gpt", maintenance))
     app.add_handler(CommandHandler("seek", maintenance))
+
+    # Tin nhắn người dùng
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     print("🤖 Bot đang chạy...")
     app.run_polling()
