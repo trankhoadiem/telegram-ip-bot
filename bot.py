@@ -4,8 +4,7 @@ import requests
 from datetime import datetime
 import pytz
 
-# ==== TOKEN ====
-TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"   # <-- điền token thật vào đây
+TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"  # <-- điền token BotFather vào đây
 
 # ==== TikTok API ====
 TIKWM_API = "https://www.tikwm.com/api/"
@@ -15,7 +14,7 @@ HEADERS = {
 }
 
 # ==== /start ====
-async def start(update, context):
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
         "🤖 Công cụ tra cứu IP, xem giờ thế giới & tải TikTok video/ảnh chất lượng cao.\n\n"
@@ -27,7 +26,7 @@ async def start(update, context):
     )
 
 # ==== /help ====
-async def help_command(update, context):
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "📖 Lệnh có sẵn:\n\n"
         "/start - Giới thiệu bot\n"
@@ -41,30 +40,30 @@ async def help_command(update, context):
 
 # ==== Check IP ====
 def get_ip_info(ip):
-    url = f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query"
-    res = requests.get(url, timeout=15).json()
+    try:
+        url = f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query"
+        res = requests.get(url, timeout=15).json()
+        if res.get("status") == "fail":
+            return None, f"❌ Không tìm thấy thông tin cho IP: {ip}"
+        info = (
+            f"🌍 Thông tin IP {res['query']}:\n"
+            f"🗺 Quốc gia: {res['country']} ({res['countryCode']})\n"
+            f"🏙 Khu vực: {res['regionName']} - {res['city']} ({res.get('zip','')})\n"
+            f"🕒 Múi giờ: {res['timezone']}\n"
+            f"📍 Toạ độ: {res['lat']}, {res['lon']}\n"
+            f"📡 ISP: {res['isp']}\n"
+            f"🏢 Tổ chức: {res['org']}\n"
+            f"🔗 AS: {res['as']}"
+        )
+        flag_url = f"https://flagcdn.com/w320/{res['countryCode'].lower()}.png"
+        return flag_url, info
+    except Exception as e:
+        return None, f"⚠️ Lỗi khi kiểm tra IP: {e}"
 
-    if res.get("status") == "fail":
-        return None, f"❌ Không tìm thấy thông tin cho IP: {ip}"
-
-    info = (
-        f"🌍 Thông tin IP {res['query']}:\n"
-        f"🗺 Quốc gia: {res['country']} ({res['countryCode']})\n"
-        f"🏙 Khu vực: {res['regionName']} - {res['city']} ({res.get('zip','')})\n"
-        f"🕒 Múi giờ: {res['timezone']}\n"
-        f"📍 Toạ độ: {res['lat']}, {res['lon']}\n"
-        f"📡 ISP: {res['isp']}\n"
-        f"🏢 Tổ chức: {res['org']}\n"
-        f"🔗 AS: {res['as']}"
-    )
-    flag_url = f"https://flagcdn.com/w320/{res['countryCode'].lower()}.png"
-    return flag_url, info
-
-async def check_ip(update, context):
+async def check_ip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("👉 Dùng: /ip 8.8.8.8")
         return
-
     ip = context.args[0].strip()
     flag_url, info = get_ip_info(ip)
     if flag_url:
@@ -73,7 +72,7 @@ async def check_ip(update, context):
         await update.message.reply_text(info)
 
 # ==== TikTok Downloader ====
-async def download_tiktok(update, context):
+async def download_tiktok(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("👉 Dùng: /tiktok <link TikTok>")
         return
@@ -84,7 +83,6 @@ async def download_tiktok(update, context):
     try:
         res = requests.post(TIKWM_API, data={"url": link}, headers=HEADERS, timeout=20)
         data_json = res.json()
-
         if data_json.get("code") != 0 or "data" not in data_json:
             await waiting_msg.edit_text("❌ Không tải được TikTok. Vui lòng kiểm tra lại link!")
             return
@@ -92,18 +90,14 @@ async def download_tiktok(update, context):
         data = data_json["data"]
         title = data.get("title", "TikTok")
 
-        # Nếu là video
-        if data.get("hdplay") or data.get("play"):
+        if data.get("hdplay") or data.get("play"):  # video
             url = data.get("hdplay") or data.get("play")
             await waiting_msg.delete()
             await update.message.reply_video(url, caption=f"🎬 {title} (chất lượng cao nhất)")
-
-        # Nếu là bài ảnh
-        elif data.get("images"):
-            await waiting_msg.edit_text(f"🖼 {title}\n\nĐang gửi ảnh gốc...")
+        elif data.get("images"):  # ảnh
+            await waiting_msg.edit_text(f"🖼 {title}\n\nĐang gửi ảnh...")
             for img_url in data["images"]:
                 await update.message.reply_photo(img_url)
-
         else:
             await waiting_msg.edit_text("⚠️ Không tìm thấy video/ảnh trong link này.")
 
@@ -111,7 +105,7 @@ async def download_tiktok(update, context):
         await waiting_msg.edit_text(f"⚠️ Lỗi khi tải TikTok: {e}")
 
 # ==== World Time ====
-async def world_time(update, context):
+async def world_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
     zones = [
         ("🇻🇳 Việt Nam", "Asia/Ho_Chi_Minh"),
         ("🇯🇵 Nhật Bản", "Asia/Tokyo"),
