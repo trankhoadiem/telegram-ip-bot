@@ -29,7 +29,7 @@ def append_footer(text: str) -> str:
     return text + "\n\n👉 Gõ /help để xem hướng dẫn | /start"
 
 # =======================
-# 🔧 AI MODE (Bảo trì - thông báo chi tiết)
+# 🔧 AI MODE (Bảo trì)
 # =======================
 MAINT_MSG = (
     "🔧 *Chức năng AI hiện đang bảo trì & nâng cấp*\n\n"
@@ -88,7 +88,7 @@ async def startbot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(append_footer("✅ Bot đang chạy bình thường!"))
 
 # =======================
-# 🚀 Start / Help (chi tiết)
+# 🚀 Start / Help
 # =======================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
@@ -116,28 +116,21 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "   • /gpt — Chọn ChatGPT.\n"
         "   • /grok — Chọn Grok.\n"
         "   • /gemini — Chọn Gemini.\n"
-        "   • /exit — Thoát chế độ AI.\n"
-        "   📌 Lưu ý: Hiện các lệnh này đang tạm dừng, chỉ trả về thông báo bảo trì.\n\n"
+        "   • /exit — Thoát chế độ AI.\n\n"
 
         "3) Công cụ kiểm tra IP:\n"
-        "   • /ip <địa_chỉ_ip> — Kiểm tra thông tin của IP: quốc gia, thành phố, ISP, tổ chức, múi giờ, tọa độ.\n"
+        "   • /ip <địa_chỉ_ip> — Kiểm tra thông tin IP: quốc gia, thành phố, ISP, tổ chức, múi giờ, tọa độ.\n"
         "     Ví dụ: `/ip 8.8.8.8`\n\n"
 
         "4) TikTok:\n"
-        "   • /tiktok <link> — Dán link TikTok để bot tải nội dung:\n"
-        "        - Nếu là video → gửi lại video.\n"
-        "        - Nếu là album ảnh → gửi lại từng ảnh.\n"
-        "   • /tiktokinfo <username> — Lấy thông tin tài khoản TikTok:\n"
-        "        - Tên hiển thị, UID, quốc gia, số follower, tổng lượt thích, số video, bio, avatar.\n\n"
+        "   • /tiktok <link> — Tải nội dung từ TikTok (video/ảnh).\n"
+        "   • /tiktokinfo <username> — Lấy thông tin tài khoản TikTok: tên hiển thị, UID, quốc gia, followers, likes, video, bio, avatar.\n\n"
 
         "5) Lệnh quản trị (chỉ admin):\n"
         "   • /shutdown — Dừng bot.\n"
         "   • /restart — Khởi động lại bot.\n"
         "   • /startbot — Kiểm tra trạng thái bot.\n\n"
 
-        "6) Lưu ý:\n"
-        "   • Sử dụng hợp pháp, không lạm dụng.\n"
-        "   • Thông tin TikTok/IP lấy từ API công khai, có thể thay đổi.\n\n"
         "📌 Liên hệ admin: @DuRinn_LeTuanDiem"
     )
     await update.message.reply_text(append_footer(text))
@@ -215,7 +208,8 @@ async def tiktok_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     waiting_msg = await update.message.reply_text(f"⏳ Đang lấy info @{username}...")
     try:
         api_url = f"https://www.tikwm.com/api/user/info?unique_id={username}"
-        user = requests.get(api_url, headers=HEADERS, timeout=15).json().get("data", {})
+        res = requests.get(api_url, headers=HEADERS, timeout=15).json()
+        user = res.get("data", {})
         caption = (
             f"📱 TikTok @{user.get('unique_id', username)}\n"
             f"👤 {user.get('nickname','N/A')}\n"
