@@ -1,5 +1,5 @@
 # bot.py
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
+from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, ContextTypes
 import requests, os, sys, asyncio
 
@@ -8,6 +8,7 @@ TOKEN = os.environ.get("TOKEN")
 
 # ==== ADMIN ====
 ADMIN_USERNAME = "DuRinn_LeTuanDiem"
+
 def is_admin(update: Update):
     user = update.effective_user
     return user and user.username == ADMIN_USERNAME
@@ -39,7 +40,7 @@ MAINT_MSG = (
     "🔧 *Chức năng AI hiện đang bảo trì & nâng cấp*\n\n"
     "Các model AI như ChatGPT, Grok, Gemini tạm thời không hoạt động.\n\n"
     "📌 Bạn vẫn có thể dùng: /ip, /tiktok, /tiktokinfo.\n"
-    "⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây"
+    "⏳ Tin nhắn này sẽ tự động xoá sau 30 giây"
 )
 
 async def ai_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -49,7 +50,7 @@ async def ai_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def exit_ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
-    msg = await update.message.reply_text("✅ Đã thoát khỏi chế độ AI.\n⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây")
+    msg = await update.message.reply_text("✅ Đã thoát khỏi chế độ AI.\n⏳ Tin nhắn này sẽ tự động xoá sau 30 giây")
     asyncio.create_task(auto_delete(msg))
 
 async def gpt(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -73,30 +74,30 @@ async def gemini(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def shutdown(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
     if not is_admin(update):
-        msg = await update.message.reply_text("⛔ Bạn không có quyền dùng lệnh này.\n⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây")
+        msg = await update.message.reply_text("⛔ Bạn không có quyền dùng lệnh này.\n⏳ Tin nhắn này sẽ tự động xoá sau 30 giây")
         asyncio.create_task(auto_delete(msg))
         return
-    msg = await update.message.reply_text("🛑 Bot đang tắt...\n⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây")
+    msg = await update.message.reply_text("🛑 Bot đang tắt...\n⏳ Tin nhắn này sẽ tự động xoá sau 30 giây")
     asyncio.create_task(auto_delete(msg))
     await context.application.stop()
 
 async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
     if not is_admin(update):
-        msg = await update.message.reply_text("⛔ Bạn không có quyền dùng lệnh này.\n⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây")
+        msg = await update.message.reply_text("⛔ Bạn không có quyền dùng lệnh này.\n⏳ Tin nhắn này sẽ tự động xoá sau 30 giây")
         asyncio.create_task(auto_delete(msg))
         return
-    msg = await update.message.reply_text("♻️ Bot đang khởi động lại...\n⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây")
+    msg = await update.message.reply_text("♻️ Bot đang khởi động lại...\n⏳ Tin nhắn này sẽ tự động xoá sau 30 giây")
     asyncio.create_task(auto_delete(msg))
     os.execv(sys.executable, ["python"] + sys.argv)
 
 async def startbot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
     if not is_admin(update):
-        msg = await update.message.reply_text("⛔ Bạn không có quyền dùng lệnh này.\n⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây")
+        msg = await update.message.reply_text("⛔ Bạn không có quyền dùng lệnh này.\n⏳ Tin nhắn này sẽ tự động xoá sau 30 giây")
         asyncio.create_task(auto_delete(msg))
         return
-    msg = await update.message.reply_text("✅ Bot đang chạy bình thường!\n⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây")
+    msg = await update.message.reply_text("✅ Bot đang chạy bình thường!\n⏳ Tin nhắn này sẽ tự động xoá sau 30 giây")
     asyncio.create_task(auto_delete(msg))
 
 # =======================
@@ -104,45 +105,47 @@ async def startbot(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =======================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
-    keyboard = [[KeyboardButton("/help")]]  # Nút bấm /help trực tiếp
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
-    msg = await update.message.reply_text(
+    text = (
         "✨ **Chào mừng bạn đến với BOT Pro** ✨\n\n"
-        "⚡ Bot liên tục cập nhật hằng ngày, trải nghiệm mượt mà & chuyên nghiệp.\n\n"
-        "📌 **Developer:** 👤 Tô Minh Điềm – @DuRinn_LeTuanDiem\n"
-        "💡 Bấm nút /help để xem chi tiết các lệnh.\n"
-        "⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây",
-        reply_markup=reply_markup
+        "⚡ Bot được cập nhật liên tục, hoạt động ổn định.\n"
+        "📌 Thành viên phát triển:\n"
+        "   👤 Tô Minh Điềm – @DuRinn_LeTuanDiem\n"
+        "💡 Gõ /help để xem tất cả lệnh.\n"
+        "⏳ Tin nhắn này sẽ tự động xoá sau 10 giây"
     )
-    asyncio.create_task(auto_delete(msg))
+    msg = await update.message.reply_text(text)
+    asyncio.create_task(auto_delete(msg, delay=10))
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
+
+    keyboard = [
+        [KeyboardButton("/ip")],
+        [KeyboardButton("/tiktok"), KeyboardButton("/tiktokinfo")],
+        [KeyboardButton("/ai"), KeyboardButton("/exit")]
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+
     text = (
         "📖 **Hướng dẫn sử dụng BOT Pro** 📖\n\n"
         "🚀 **Lệnh cơ bản**:\n"
-        "   • /start — Hiển thị giới thiệu BOT.\n"
-        "   • /help — Xem hướng dẫn chi tiết.\n\n"
-        "🤖 **Chế độ AI** (🔧 đang bảo trì):\n"
+        "   • /start — Giới thiệu BOT.\n"
+        "   • /help — Hiển thị hướng dẫn chi tiết.\n\n"
+        "🤖 **Chế độ AI** (🔧 bảo trì):\n"
         "   • /ai — Bật chế độ AI.\n"
         "   • /gpt — ChatGPT.\n"
         "   • /grok — Grok.\n"
         "   • /gemini — Gemini.\n"
         "   • /exit — Thoát chế độ AI.\n\n"
         "🌐 **Công cụ IP**:\n"
-        "   • /ip <ip> — Kiểm tra thông tin chi tiết IP.\n"
-        "     💡 Ví dụ: /ip 8.8.8.8\n\n"
+        "   • /ip <ip> — Xem thông tin IP.\n\n"
         "🎬 **Công cụ TikTok**:\n"
-        "   • /tiktok <link> — Tải video hoặc ảnh TikTok.\n"
-        "   • /tiktokinfo <username> — Lấy info tài khoản TikTok.\n\n"
-        "🔒 **Admin (chỉ @DuRinn_LeTuanDiem)**:\n"
-        "   • /shutdown — Tắt bot.\n"
-        "   • /restart — Khởi động lại bot.\n"
-        "   • /startbot — Kiểm tra bot.\n\n"
-        "⚡ Bot được phát triển & cập nhật liên tục.\n"
+        "   • /tiktok <link> — Tải video/ảnh TikTok.\n"
+        "   • /tiktokinfo <username> — Lấy info TikTok.\n\n"
         "⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây"
     )
-    msg = await update.message.reply_text(text)
+
+    msg = await update.message.reply_text(text, reply_markup=reply_markup)
     asyncio.create_task(auto_delete(msg))
 
 # =======================
@@ -153,7 +156,7 @@ def get_ip_info(ip):
         url = f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query"
         res = requests.get(url, timeout=15).json()
         if res.get("status") == "fail":
-            return None, f"❌ Không tìm thấy IP: {ip}\n⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây"
+            return None, f"❌ Không tìm thấy IP: {ip}"
         info = (
             f"🌐 Thông tin IP {res['query']}:\n"
             f"🏳️ Quốc gia: {res['country']} ({res['countryCode']})\n"
@@ -162,25 +165,24 @@ def get_ip_info(ip):
             f"📍 Tọa độ: {res['lat']}, {res['lon']}\n"
             f"📡 ISP: {res['isp']}\n"
             f"🏢 Tổ chức: {res['org']}\n"
-            f"🔗 AS: {res['as']}\n"
-            f"⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây"
+            f"🔗 AS: {res['as']}"
         )
         return f"https://flagcdn.com/w320/{res['countryCode'].lower()}.png", info
     except Exception as e:
-        return None, f"⚠️ Lỗi IP: {e}\n⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây"
+        return None, f"⚠️ Lỗi IP: {e}"
 
 async def check_ip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
     if not context.args:
-        msg = await update.message.reply_text("👉 Dùng: /ip <địa_chỉ_ip>\n⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây")
+        msg = await update.message.reply_text("👉 Dùng: /ip <địa_chỉ_ip>\n⏳ Tin nhắn này sẽ tự động xoá sau 30 giây")
         asyncio.create_task(auto_delete(msg))
         return
     ip = context.args[0].strip()
     flag_url, info = get_ip_info(ip)
     if flag_url:
-        msg = await update.message.reply_photo(flag_url, caption=info)
+        msg = await update.message.reply_photo(flag_url, caption=info + "\n⏳ Tin nhắn này sẽ tự động xoá sau 30 giây")
     else:
-        msg = await update.message.reply_text(info)
+        msg = await update.message.reply_text(info + "\n⏳ Tin nhắn này sẽ tự động xoá sau 30 giây")
     asyncio.create_task(auto_delete(msg))
 
 # =======================
@@ -189,15 +191,15 @@ async def check_ip(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def download_tiktok(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
     if not context.args:
-        msg = await update.message.reply_text("👉 Dùng: /tiktok <link>\n⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây")
+        msg = await update.message.reply_text("👉 Dùng: /tiktok <link>\n⏳ Tin nhắn này sẽ tự động xoá sau 30 giây")
         asyncio.create_task(auto_delete(msg))
         return
     link = context.args[0].strip()
-    waiting_msg = await update.message.reply_text("⏳ Đang xử lý TikTok...\n⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây")
+    waiting_msg = await update.message.reply_text("⏳ Đang xử lý TikTok... Tin nhắn này sẽ tự động xoá sau 30 giây")
     try:
         res = requests.post(TIKWM_API, data={"url": link}, headers=HEADERS, timeout=20).json()
         if res.get("code") != 0 or "data" not in res:
-            await waiting_msg.edit_text("❌ Không tải được TikTok.\n⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây")
+            await waiting_msg.edit_text("❌ Không tải được TikTok.\n⏳ Tin nhắn này sẽ tự động xoá sau 30 giây")
             asyncio.create_task(auto_delete(waiting_msg))
             return
         data = res["data"]
@@ -205,27 +207,27 @@ async def download_tiktok(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await waiting_msg.delete()
         if data.get("hdplay") or data.get("play"):
             msg = await update.message.reply_video(data.get("hdplay") or data.get("play"),
-                                                   caption=f"🎬 {title}\n⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây")
+                                                   caption=f"🎬 {title}\n⏳ Tin nhắn này sẽ tự động xoá sau 30 giây")
             asyncio.create_task(auto_delete(msg))
         elif data.get("images"):
             for img in data["images"]:
                 msg = await update.message.reply_photo(img)
                 asyncio.create_task(auto_delete(msg))
         else:
-            msg = await update.message.reply_text("⚠️ Không tìm thấy video/ảnh.\n⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây")
+            msg = await update.message.reply_text("⚠️ Không tìm thấy video/ảnh.\n⏳ Tin nhắn này sẽ tự động xoá sau 30 giây")
             asyncio.create_task(auto_delete(msg))
     except Exception as e:
-        await waiting_msg.edit_text(f"⚠️ Lỗi TikTok: {e}\n⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây")
+        await waiting_msg.edit_text(f"⚠️ Lỗi TikTok: {e}\n⏳ Tin nhắn này sẽ tự động xoá sau 30 giây")
         asyncio.create_task(auto_delete(waiting_msg))
 
 async def tiktok_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
     if not context.args:
-        msg = await update.message.reply_text("👉 Dùng: /tiktokinfo <username>\n⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây")
+        msg = await update.message.reply_text("👉 Dùng: /tiktokinfo <username>\n⏳ Tin nhắn này sẽ tự động xoá sau 30 giây")
         asyncio.create_task(auto_delete(msg))
         return
     username = context.args[0].strip().replace("@", "")
-    waiting_msg = await update.message.reply_text(f"⏳ Đang lấy info @{username}...\n⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây")
+    waiting_msg = await update.message.reply_text(f"⏳ Đang lấy info @{username}... Tin nhắn này sẽ tự động xoá sau 30 giây")
     try:
         api_url = f"https://www.tikwm.com/api/user/info?unique_id={username}"
         user = requests.get(api_url, headers=HEADERS, timeout=15).json().get("data", {})
@@ -237,7 +239,7 @@ async def tiktok_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❤️ Likes: {user.get('total_favorited','?')}\n"
             f"🎬 Video: {user.get('aweme_count','?')}\n"
             f"📝 Bio: {user.get('signature','')}\n"
-            f"⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây"
+            f"⏳ Tin nhắn này sẽ tự động xoá sau 30 giây"
         )
         avatar = user.get("avatar")
         await waiting_msg.delete()
@@ -247,7 +249,7 @@ async def tiktok_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
             msg = await update.message.reply_text(caption)
         asyncio.create_task(auto_delete(msg))
     except Exception as e:
-        await waiting_msg.edit_text(f"⚠️ Lỗi TikTok info: {e}\n⚠️ Tin nhắn này sẽ tự động xoá sau 30 giây")
+        await waiting_msg.edit_text(f"⚠️ Lỗi TikTok info: {e}\n⏳ Tin nhắn này sẽ tự động xoá sau 30 giây")
         asyncio.create_task(auto_delete(waiting_msg))
 
 # =======================
