@@ -3,31 +3,8 @@ from flask import Flask, request, redirect
 import sqlite3, time, os
 
 app = Flask(__name__)
+
 DB_PATH = "db.sqlite3"
-
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS links (
-        id TEXT PRIMARY KEY,
-        target TEXT
-    )
-    """)
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        link_id TEXT,
-        ip TEXT,
-        user_agent TEXT,
-        timestamp INTEGER
-    )
-    """)
-    conn.commit()
-    conn.close()
-
-# init DB ở web (an toàn nếu cả 2 service cùng db)
-init_db()
 
 def log_click(link_id, ip, ua):
     conn = sqlite3.connect(DB_PATH)
@@ -47,19 +24,23 @@ def get_target(link_id):
 
 @app.route("/")
 def home():
-    return "✅ Logger server đang chạy. Dùng bot Telegram để tạo link!"
+    return "✅ Web service cho Telegram Bot đang chạy!"
 
 @app.route("/<link_id>")
-def tracker(link_id):
+def redirect_link(link_id):
     target = get_target(link_id)
     if not target:
-        return "❌ Link không tồn tại!", 404
+        return "❌ Link không tồn tại hoặc đã bị xóa.", 404
 
-    # IP từ header X-Forwarded-For nếu có (platform như Railway)
+    # Lấy IP và User-Agent
     ip = request.headers.get("X-Forwarded-For", request.remote_addr)
     ua = request.headers.get("User-Agent", "Unknown")
+
+    # Ghi log
     log_click(link_id, ip, ua)
-    return redirect(target)
+
+    # Redirect về URL gốc
+    return redirect(target, code=302)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
