@@ -1,9 +1,10 @@
+# bot.py
 from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import requests, os, sys, sqlite3, string, random, time
 
 # ==== TOKEN ====
-TOKEN = os.environ.get("TOKEN")
+TOKEN = os.environ.get("TOKEN")  # đặt trong Railway: TOKEN = <telegram-bot-token>
 
 # ==== ADMIN ====
 ADMIN_USERNAME = "DuRinn_LeTuanDiem"
@@ -12,31 +13,38 @@ def is_admin(update: Update):
     user = update.effective_user
     return user and user.username == ADMIN_USERNAME
 
-# ==== TikTok API ====
+# ==== TikTok API (giữ lại chức năng cũ) ====
 TIKWM_API = "https://www.tikwm.com/api/"
 HEADERS = {
     "User-Agent": "Mozilla/5.0",
     "Referer": "https://www.tikwm.com/"
 }
 
-# ==== DB ====
+# ==== DB init (SQLite) ====
+DB_PATH = "db.sqlite3"
+
 def init_db():
-    conn = sqlite3.connect("db.sqlite3")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("""CREATE TABLE IF NOT EXISTS links (
-                    id TEXT PRIMARY KEY,
-                    target TEXT
-                )""")
-    c.execute("""CREATE TABLE IF NOT EXISTS logs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    link_id TEXT,
-                    ip TEXT,
-                    user_agent TEXT,
-                    timestamp INTEGER
-                )""")
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS links (
+        id TEXT PRIMARY KEY,
+        target TEXT
+    )
+    """)
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        link_id TEXT,
+        ip TEXT,
+        user_agent TEXT,
+        timestamp INTEGER
+    )
+    """)
     conn.commit()
     conn.close()
 
+# gọi init khi start
 init_db()
 
 # ==== Helper ====
@@ -53,8 +61,11 @@ def append_footer(text: str) -> str:
 def gen_id(n=6):
     return "".join(random.choices(string.ascii_letters + string.digits, k=n))
 
+# SERVER_URL: URL của web.py (Railway app URL), ví dụ https://mylogger.up.railway.app
+SERVER_URL = os.environ.get("SERVER_URL", "").rstrip("/")  # set trong Railway sau khi deploy
+
 # =======================
-# 🚀 AI MODE (bảo trì)
+# AI MODE (bảo trì) - giữ nguyên
 # =======================
 async def ai_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
@@ -77,32 +88,32 @@ async def gemini(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(append_footer("🚧 Tính năng **Gemini** hiện đang bảo trì."))
 
 # =======================
-# 🚀 Admin
+# Admin commands
 # =======================
 async def shutdown(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
-        await update.message.reply_text("⛔ Không có quyền.")
+        await update.message.reply_text(append_footer("⛔ Bạn không có quyền dùng lệnh này."))
         return
     await update.message.reply_text(append_footer("🛑 Bot đang **tắt**..."))
     await context.application.stop()
 
 async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
-        await update.message.reply_text("⛔ Không có quyền.")
+        await update.message.reply_text(append_footer("⛔ Bạn không có quyền dùng lệnh này."))
         return
     await update.message.reply_text(append_footer("♻️ Bot đang **khởi động lại**..."))
     os.execv(sys.executable, ["python"] + sys.argv)
 
 async def startbot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
-        await update.message.reply_text("⛔ Không có quyền.")
+        await update.message.reply_text(append_footer("⛔ Bạn không có quyền dùng lệnh này."))
         return
     await update.message.reply_text(append_footer("✅ Bot đang chạy bình thường!"))
 
 # =======================
-# 🚀 Lệnh chính
+# Lệnh chính: start / help
 # =======================
-async def start(update, context):
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(append_footer(
         "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
         "🤖 Công cụ: 🌐 Kiểm tra IP | 🎬 Tải TikTok | 📊 Logger link | 🤖 AI (bảo trì)\n\n"
@@ -111,7 +122,7 @@ async def start(update, context):
         "   🤖 Bot chính thức – @ToMinhDiem_bot"
     ))
 
-async def help_command(update, context):
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         "📖 *Hướng dẫn sử dụng BOT* (chi tiết)\n\n"
         "🚀 **Lệnh cơ bản**:\n"
@@ -119,34 +130,35 @@ async def help_command(update, context):
         "   • /help — Xem hướng dẫn chi tiết\n\n"
         "🤖 **AI (🚧 bảo trì)**:\n"
         "   • /ai, /gpt, /grok, /gemini, /exit\n\n"
-        "🌐 **Công cụ IP**:\n"
-        "   • /ip <ip> — Kiểm tra thông tin IP\n\n"
+        "🌐 **IP**:\n"
+        "   • /ip <ip> — Kiểm tra thông tin IP (ví dụ: /ip 8.8.8.8)\n\n"
         "🎬 **TikTok**:\n"
         "   • /tiktok <link> — Tải video/ảnh TikTok\n"
         "   • /tiktokinfo <username> — Lấy info tài khoản TikTok\n\n"
-        "📊 **Logger (giống Grabify)**:\n"
-        "   • /createlink <url> — Tạo link theo dõi click\n"
-        "   • /logs <id> — Xem IP + User-Agent của những ai đã click\n\n"
+        "📊 **Logger (Grabify-like)**:\n"
+        "   • /createlink <url> — Tạo link theo dõi click (ví dụ: /createlink https://example.com)\n"
+        "     → Bot trả về 1 link dạng: https://your-server/<id>\n"
+        "   • /logs <id> — Xem IP, User-Agent, thời gian người đã click link\n\n"
         "🔒 **Admin**:\n"
-        "   • /shutdown — Tắt bot\n"
-        "   • /restart — Restart bot\n"
-        "   • /startbot — Kiểm tra bot"
+        "   • /shutdown, /restart, /startbot\n\n"
+        "⚠️ *Chỉ sử dụng chức năng Logger khi có sự đồng ý của người click.*"
     )
     await update.message.reply_text(append_footer(text))
 
 # =======================
-# 🚀 Logger (Grabify-like)
+# Logger (createlink + logs)
 # =======================
-SERVER_URL = os.environ.get("SERVER_URL")  # URL web server log
-
 async def createlink(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
     if not context.args:
         await update.message.reply_text(append_footer("👉 Dùng: /createlink <url>"))
         return
-    url = context.args[0]
+    url = context.args[0].strip()
+    if not SERVER_URL:
+        await update.message.reply_text(append_footer("❌ SERVER_URL chưa cấu hình. Vui lòng đặt biến môi trường SERVER_URL."))
+        return
     link_id = gen_id()
-    conn = sqlite3.connect("db.sqlite3")
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("INSERT INTO links (id, target) VALUES (?,?)", (link_id, url))
     conn.commit()
@@ -159,22 +171,22 @@ async def logs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text(append_footer("👉 Dùng: /logs <id>"))
         return
-    link_id = context.args[0]
-    conn = sqlite3.connect("db.sqlite3")
+    link_id = context.args[0].strip()
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("SELECT ip, user_agent, timestamp FROM logs WHERE link_id=?", (link_id,))
+    c.execute("SELECT ip, user_agent, timestamp FROM logs WHERE link_id=? ORDER BY id DESC LIMIT 100", (link_id,))
     rows = c.fetchall()
     conn.close()
     if not rows:
         await update.message.reply_text(append_footer("❌ Chưa có ai click link này."))
         return
-    msg = f"📊 Logs cho link {link_id}:\n\n"
-    for ip, ua, ts in rows[-10:]:
+    msg = f"📊 Logs cho link {link_id} (mới nhất lên trên):\n\n"
+    for ip, ua, ts in rows:
         msg += f"🕒 {time.ctime(ts)}\n🌐 IP: {ip}\n📱 UA: {ua}\n\n"
     await update.message.reply_text(append_footer(msg))
 
 # =======================
-# 🚀 IP
+# IP checker & TikTok functions (giữ nguyên)
 # =======================
 def get_ip_info(ip):
     try:
@@ -196,31 +208,28 @@ def get_ip_info(ip):
     except Exception as e:
         return None, f"⚠️ Lỗi IP: {e}"
 
-async def check_ip(update, context):
+async def check_ip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
     if not context.args:
         await update.message.reply_text(append_footer("👉 Dùng: /ip 8.8.8.8"))
         return
-    ip = context.args[0]
+    ip = context.args[0].strip()
     flag_url, info = get_ip_info(ip)
     if flag_url:
         await update.message.reply_photo(flag_url, caption=append_footer(info))
     else:
         await update.message.reply_text(append_footer(info))
 
-# =======================
-# 🚀 TikTok
-# =======================
-async def download_tiktok(update, context):
+async def download_tiktok(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
     if not context.args:
         await update.message.reply_text(append_footer("👉 Dùng: /tiktok <link>"))
         return
-    link = context.args[0]
+    link = context.args[0].strip()
     waiting_msg = await update.message.reply_text("⏳ Đang xử lý TikTok...")
     try:
         res = requests.post(TIKWM_API, data={"url": link}, headers=HEADERS, timeout=20).json()
-        if res.get("code") != 0:
+        if res.get("code") != 0 or "data" not in res:
             await waiting_msg.edit_text(append_footer("❌ Không tải được TikTok."))
             return
         data = res["data"]
@@ -237,12 +246,12 @@ async def download_tiktok(update, context):
     except Exception as e:
         await waiting_msg.edit_text(append_footer(f"⚠️ Lỗi TikTok: {e}"))
 
-async def tiktok_info(update, context):
+async def tiktok_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
     if not context.args:
         await update.message.reply_text(append_footer("👉 Dùng: /tiktokinfo <username>"))
         return
-    username = context.args[0].replace("@", "")
+    username = context.args[0].strip().replace("@", "")
     waiting_msg = await update.message.reply_text(f"⏳ Đang lấy info @{username}...")
     try:
         api_url = f"https://www.tikwm.com/api/user/info?unique_id={username}"
@@ -270,25 +279,30 @@ async def tiktok_info(update, context):
 # =======================
 def main():
     app = Application.builder().token(TOKEN).build()
+
     # AI
     app.add_handler(CommandHandler("ai", ai_mode))
     app.add_handler(CommandHandler("exit", exit_ai))
     app.add_handler(CommandHandler("gpt", gpt))
     app.add_handler(CommandHandler("grok", grok))
     app.add_handler(CommandHandler("gemini", gemini))
+
     # Tools
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("ip", check_ip))
     app.add_handler(CommandHandler("tiktok", download_tiktok))
     app.add_handler(CommandHandler("tiktokinfo", tiktok_info))
+
     # Logger
     app.add_handler(CommandHandler("createlink", createlink))
     app.add_handler(CommandHandler("logs", logs))
+
     # Admin
     app.add_handler(CommandHandler("shutdown", shutdown))
     app.add_handler(CommandHandler("restart", restart))
     app.add_handler(CommandHandler("startbot", startbot))
+
     print("🤖 Bot đang chạy...")
     app.run_polling()
 
