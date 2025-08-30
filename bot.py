@@ -5,12 +5,14 @@ import os
 import sys
 import openai
 import google.generativeai as genai
+import re
 
 # ==== TOKEN & API KEYS ====
 TOKEN = os.environ.get("TOKEN")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 XAI_API_KEY = os.environ.get("XAI_API_KEY")
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")   # Gemini key
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+FACEBOOK_TOKEN = os.environ.get("FACEBOOK_TOKEN")   # Facebook Graph API token (bắt buộc cho /facebook)
 
 # ==== ADMIN ====
 ADMIN_USERNAME = "DuRinn_LeTuanDiem"
@@ -29,7 +31,6 @@ HEADERS = {
 # =======================
 # 🚀 AI MODE
 # =======================
-
 async def ai_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["ai_mode"] = None
     await update.message.reply_text(
@@ -45,33 +46,28 @@ async def exit_ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["ai_mode"] = None
     await update.message.reply_text("✅ Bạn đã thoát khỏi **Chế độ AI**.")
 
-# chọn model
 async def gpt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["ai_mode"] = "gpt"
-    await update.message.reply_text("🧠 Bạn đang trò chuyện với **ChatGPT**. Hãy nhập tin nhắn... (/exit để thoát)")
+    await update.message.reply_text("🧠 Bạn đang trò chuyện với **ChatGPT**.")
 
 async def grok(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["ai_mode"] = "grok"
-    await update.message.reply_text("🦉 Bạn đang trò chuyện với **Grok**. Hãy nhập tin nhắn... (/exit để thoát)")
+    await update.message.reply_text("🦉 Bạn đang trò chuyện với **Grok**.")
 
 async def gemini(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["ai_mode"] = "gemini"
-    await update.message.reply_text("🌌 Bạn đang trò chuyện với **Gemini**. Hãy nhập tin nhắn... (/exit để thoát)")
+    await update.message.reply_text("🌌 Bạn đang trò chuyện với **Gemini**.")
 
-# xử lý tin nhắn khi đang trong chế độ AI
 async def handle_ai_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mode = context.user_data.get("ai_mode")
     if not mode:
         return
-
     query = update.message.text.strip()
-
     thinking_msg = await update.message.reply_text("⏳ Đang suy nghĩ...")
     try:
         await update.message.delete()
     except:
         pass
-
     try:
         if mode == "gpt":
             openai.api_key = OPENAI_API_KEY
@@ -109,54 +105,42 @@ async def handle_ai_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =======================
 async def shutdown(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
-        await update.message.reply_text("⛔ Bạn không có quyền dùng lệnh này.")
+        await update.message.reply_text("⛔ Bạn không có quyền.")
         return
-    await update.message.reply_text("🛑 Bot đang **tắt**...")
+    await update.message.reply_text("🛑 Bot đang tắt...")
     await context.application.stop()
 
 async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
-        await update.message.reply_text("⛔ Bạn không có quyền dùng lệnh này.")
+        await update.message.reply_text("⛔ Bạn không có quyền.")
         return
-    await update.message.reply_text("♻️ Bot đang **khởi động lại**...")
+    await update.message.reply_text("♻️ Bot đang khởi động lại...")
     os.execv(sys.executable, ["python"] + sys.argv)
 
 async def startbot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
-        await update.message.reply_text("⛔ Bạn không có quyền dùng lệnh này.")
+        await update.message.reply_text("⛔ Bạn không có quyền.")
         return
-    await update.message.reply_text("✅ Bot đang chạy bình thường!")
+    await update.message.reply_text("✅ Bot đang chạy!")
 
 # =======================
-# 🚀 Các lệnh khác
+# 🚀 Commands
 # =======================
-
 async def start(update, context):
     await update.message.reply_text(
-        "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
-        "🤖 Công cụ: 🌐 Kiểm tra IP | 🎬 Tải TikTok | 🤖 Chat AI (GPT, Grok, Gemini)\n\n"
-        "⚡ Bot vẫn đang **cập nhật hằng ngày**, có thể tồn tại một số lỗi.\n\n"
-        "📌 Thành viên phát triển BOT:\n"
-        "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
-        "   👤 Telegram Support – @Telegram\n"
-        "   🤖 Bot chính thức – @ToMinhDiem_bot\n\n"
-        "💡 Gõ /help để xem tất cả lệnh khả dụng."
+        "✨ **Chào mừng đến với BOT** ✨\n\n"
+        "Lệnh có sẵn:\n"
+        "🤖 /ai - Chat AI\n"
+        "🌐 /ip <ip>\n"
+        "🎬 /tiktok <link>\n"
+        "📘 /facebook <id hoặc link>\n\n"
+        "🔒 Lệnh admin: /shutdown, /restart, /startbot"
     )
 
 async def help_command(update, context):
-    await update.message.reply_text(
-        "📖 **Danh sách lệnh khả dụng**:\n\n"
-        "🚀 /start - Bắt đầu\n"
-        "🛠 /help - Trợ giúp\n"
-        "🤖 /ai - Bật Chế độ AI (GPT, Grok, Gemini)\n"
-        "🌐 /ip <ip> - Kiểm tra IP\n"
-        "🎬 /tiktok <link> - Tải TikTok\n\n"
-        "🔒 **Lệnh Admin** (@DuRinn_LeTuanDiem):\n"
-        "🛑 /shutdown - Tắt bot\n"
-        "♻️ /restart - Khởi động lại bot\n"
-        "✅ /startbot - Kiểm tra bot"
-    )
+    await update.message.reply_text("📖 /ip, /tiktok, /ai, /facebook, /help")
 
+# ==== Check IP ====
 def get_ip_info(ip):
     try:
         url = f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query"
@@ -189,6 +173,7 @@ async def check_ip(update, context):
     else:
         await update.message.reply_text(info)
 
+# ==== TikTok ====
 async def download_tiktok(update, context):
     if not context.args:
         await update.message.reply_text("👉 Dùng: /tiktok <link TikTok>")
@@ -199,28 +184,67 @@ async def download_tiktok(update, context):
         res = requests.post(TIKWM_API, data={"url": link}, headers=HEADERS, timeout=20)
         data_json = res.json()
         if data_json.get("code") != 0 or "data" not in data_json:
-            await waiting_msg.edit_text("❌ Không tải được TikTok. Vui lòng kiểm tra lại link!")
+            await waiting_msg.edit_text("❌ Không tải được TikTok!")
             return
         data = data_json["data"]
         title = data.get("title", "TikTok")
         if data.get("hdplay") or data.get("play"):
             url = data.get("hdplay") or data.get("play")
             await waiting_msg.delete()
-            await update.message.reply_video(url, caption=f"🎬 {title} (HQ)")
+            await update.message.reply_video(url, caption=f"🎬 {title}")
         elif data.get("images"):
             await waiting_msg.edit_text(f"🖼 {title}\n\nĐang gửi ảnh...")
             for img_url in data["images"]:
                 await update.message.reply_photo(img_url)
         else:
-            await waiting_msg.edit_text("⚠️ Không tìm thấy video/ảnh trong link này.")
+            await waiting_msg.edit_text("⚠️ Không tìm thấy video/ảnh.")
     except Exception as e:
-        await waiting_msg.edit_text(f"⚠️ Lỗi khi tải TikTok: {e}")
+        await waiting_msg.edit_text(f"⚠️ Lỗi: {e}")
 
+# ==== Facebook ====
+def extract_fbid(text):
+    # Lấy id từ link facebook.com/username hoặc trực tiếp id
+    if re.match(r'^\d+$', text):
+        return text
+    if "facebook.com" in text:
+        parts = text.split("/")
+        for p in parts:
+            if p and p.isdigit():
+                return p
+    return text
+
+async def check_facebook(update, context):
+    if not context.args:
+        await update.message.reply_text("👉 Dùng: /facebook <id hoặc link>")
+        return
+    fid = extract_fbid(context.args[0])
+    url = f"https://graph.facebook.com/v17.0/{fid}?fields=id,name,link,birthday,about&access_token={FACEBOOK_TOKEN}"
+    try:
+        res = requests.get(url, timeout=15).json()
+        if "error" in res:
+            await update.message.reply_text(f"❌ Lỗi: {res['error'].get('message')}")
+            return
+        name = res.get("name", "N/A")
+        fb_link = res.get("link", "N/A")
+        birthday = res.get("birthday", "Không công khai")
+        about = res.get("about", "Không có")
+        caption = (
+            f"📘 Thông tin Facebook:\n"
+            f"👤 Tên: {name}\n"
+            f"🔗 Link: {fb_link}\n"
+            f"🎂 Ngày sinh: {birthday}\n"
+            f"ℹ️ Giới thiệu: {about}"
+        )
+        # Lấy avatar
+        avatar_url = f"https://graph.facebook.com/{fid}/picture?type=large&access_token={FACEBOOK_TOKEN}"
+        await update.message.reply_photo(avatar_url, caption=caption)
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ Lỗi khi lấy thông tin FB: {e}")
+
+# ==== Welcome ====
 async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for member in update.message.new_chat_members:
-        await update.message.reply_text(
-            f"🎉👋 Chào mừng {member.full_name} đã tham gia nhóm {update.message.chat.title}!"
-        )
+        await update.message.reply_text(f"🎉👋 Chào mừng {member.full_name} vào nhóm {update.message.chat.title}!")
 
 # =======================
 # 🚀 MAIN
@@ -241,6 +265,7 @@ def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("ip", check_ip))
     app.add_handler(CommandHandler("tiktok", download_tiktok))
+    app.add_handler(CommandHandler("facebook", check_facebook))
 
     # Admin
     app.add_handler(CommandHandler("shutdown", shutdown))
