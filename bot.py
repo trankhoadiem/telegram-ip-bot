@@ -3,14 +3,9 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 import requests
 import os
 import sys
-import openai
-import google.generativeai as genai
 
 # ==== TOKEN & API KEYS ====
 TOKEN = os.environ.get("TOKEN")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-XAI_API_KEY = os.environ.get("XAI_API_KEY")
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")   # Gemini key
 
 # ==== ADMIN ====
 ADMIN_USERNAME = "DuRinn_LeTuanDiem"
@@ -40,19 +35,14 @@ def append_footer(text: str) -> str:
     return text + "\n\n👉 Gõ /help để xem hướng dẫn | /start"
 
 # =======================
-# 🚀 AI MODE
+# 🚀 AI MODE (bảo trì)
 # =======================
 async def ai_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
     context.user_data["ai_mode"] = None
     await update.message.reply_text(append_footer(
-        "🤖 **Chế độ AI** đã bật.\n\n"
-        "Bạn có thể chọn model để trò chuyện:\n"
-        "🧠 /gpt — ChatGPT (🚧 đang bảo trì)\n"
-        "🦉 /grok — Grok (🚧 đang bảo trì)\n"
-        "🌌 /gemini — Gemini (🚧 đang bảo trì)\n\n"
-        "❌ /exit — Thoát chế độ AI.\n\n"
-        "💡 Khi chọn model xong, bạn chỉ cần gõ câu hỏi và bot sẽ trả lời."
+        "🚧 Tính năng **AI (GPT, Grok, Gemini)** hiện đang bảo trì.\n\n"
+        "👉 Vui lòng thử lại sau."
     ))
 
 async def exit_ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -63,15 +53,15 @@ async def exit_ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Model commands → chỉ báo bảo trì
 async def gpt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
-    await update.message.reply_text(append_footer("🚧 Tính năng **ChatGPT** hiện đang được bảo trì, vui lòng thử lại sau."))
+    await update.message.reply_text(append_footer("🚧 Tính năng **ChatGPT** hiện đang bảo trì."))
 
 async def grok(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
-    await update.message.reply_text(append_footer("🚧 Tính năng **Grok** hiện đang được bảo trì, vui lòng thử lại sau."))
+    await update.message.reply_text(append_footer("🚧 Tính năng **Grok** hiện đang bảo trì."))
 
 async def gemini(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
-    await update.message.reply_text(append_footer("🚧 Tính năng **Gemini** hiện đang được bảo trì, vui lòng thử lại sau."))
+    await update.message.reply_text(append_footer("🚧 Tính năng **Gemini** hiện đang bảo trì."))
 
 # =======================
 # 🚀 Admin Commands
@@ -113,17 +103,28 @@ async def start(update, context):
 async def help_command(update, context):
     text = (
         "📖 *Hướng dẫn sử dụng BOT* (chi tiết)\n\n"
-        "🔹 /start — Hiển thị thông tin giới thiệu\n"
-        "🔹 /help — Hiển thị hướng dẫn chi tiết\n\n"
-        "🔹 /ai — Bật chế độ AI, sau đó:\n"
-        "   • /gpt — ChatGPT (🚧 bảo trì)\n"
-        "   • /grok — Grok (🚧 bảo trì)\n"
-        "   • /gemini — Gemini (🚧 bảo trì)\n"
-        "   • /exit — Thoát chế độ AI\n\n"
-        "🔹 /ip <ip> — Kiểm tra thông tin IP\n"
-        "🔹 /tiktok <link> — Tải video/ảnh TikTok\n"
-        "🔹 /tiktokinfo <username> — Lấy thông tin tài khoản TikTok\n\n"
-        "🔒 Lệnh Admin: /shutdown, /restart, /startbot"
+        "🚀 **Lệnh cơ bản**:\n"
+        "   • /start — Hiển thị thông tin giới thiệu bot.\n"
+        "   • /help — Hiển thị hướng dẫn chi tiết các lệnh.\n\n"
+        "🤖 **Chế độ AI** (🚧 hiện đang bảo trì):\n"
+        "   • /ai — Bật chế độ AI.\n"
+        "   • /gpt — ChatGPT.\n"
+        "   • /grok — Grok.\n"
+        "   • /gemini — Gemini.\n"
+        "   • /exit — Thoát chế độ AI.\n\n"
+        "🌐 **Công cụ IP**:\n"
+        "   • /ip <ip> — Kiểm tra thông tin chi tiết của một IP.\n"
+        "   💡 Ví dụ: /ip 8.8.8.8\n\n"
+        "🎬 **Công cụ TikTok**:\n"
+        "   • /tiktok <link> — Tải video hoặc ảnh từ TikTok.\n"
+        "   • /tiktokinfo <username> — Lấy thông tin tài khoản TikTok.\n"
+        "     Bao gồm: tên, UID, quốc gia, ngày sinh, ngày tạo, followers, like, bio...\n"
+        "   💡 Ví dụ: /tiktokinfo username\n\n"
+        "🔒 **Lệnh Admin (chỉ @DuRinn_LeTuanDiem)**:\n"
+        "   • /shutdown — Tắt bot.\n"
+        "   • /restart — Khởi động lại bot.\n"
+        "   • /startbot — Kiểm tra bot có đang hoạt động không.\n\n"
+        "⚡ *Bot được phát triển và cập nhật hằng ngày.*"
     )
     await update.message.reply_text(append_footer(text))
 
@@ -163,7 +164,7 @@ async def check_ip(update, context):
 async def download_tiktok(update, context):
     await delete_user_message(update)
     if not context.args:
-        await update.message.reply_text(append_footer("👉 Dùng: /tiktok <link TikTok>"))
+        await update.message.reply_text(append_footer("👉 Dùng: /tiktok <link>"))
         return
     link = context.args[0].strip()
     waiting_msg = await update.message.reply_text("⏳ Đang xử lý link TikTok...")
