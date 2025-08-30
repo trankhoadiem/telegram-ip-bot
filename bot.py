@@ -23,8 +23,7 @@ async def delete_user_message(update: Update):
         if update.message:
             await update.message.delete()
     except:
-        # im lặng nếu không có quyền xóa
-        pass
+        pass  # im lặng nếu không có quyền xóa
 
 def append_footer(text: str) -> str:
     return text + "\n\n👉 Gõ /help để xem hướng dẫn | /start"
@@ -33,27 +32,22 @@ def append_footer(text: str) -> str:
 # 🔧 AI MODE (Bảo trì - thông báo chi tiết)
 # =======================
 MAINT_MSG = (
-    "🔧 *Chức năng AI đang trong giai đoạn bảo trì & nâng cấp*\n\n"
-    "Hiện tại các model AI (ChatGPT, Grok, Gemini) tạm thời **không hoạt động** trên bot này vì đang được "
-    "bảo trì, cập nhật cấu hình và xử lý giới hạn truy cập. Những thay đổi có thể bao gồm cập nhật API key, "
-    "cấu hình bảo mật hoặc chỉnh sửa logic để cải thiện chất lượng câu trả lời.\n\n"
-    "• *Điều đó có nghĩa gì?*\n"
-    "  - Khi bật /ai hoặc gọi /gpt /grok /gemini, bot sẽ không thể trả lời theo model.\n"
-    "  - Các lệnh AI hiện chỉ trả về thông báo bảo trì để tránh lỗi khi gọi dịch vụ bên ngoài.\n\n"
-    "• *Bạn có thể làm gì bây giờ?*\n"
-    "  - Sử dụng các công cụ khác của bot: /ip, /tiktok, /tiktokinfo.\n"
-    "  - Nếu bạn là admin hoặc quản trị viên, liên hệ người quản lý bot để trao đổi việc kích hoạt lại.\n\n"
-    "Cảm ơn bạn đã thông cảm — khi chức năng AI được bật trở lại, bot sẽ hoạt động bình thường.\n"
+    "🔧 *Chức năng AI hiện đang bảo trì & nâng cấp*\n\n"
+    "Các model AI như ChatGPT, Grok, Gemini tạm thời không hoạt động. "
+    "Nguyên nhân có thể do cập nhật API, thay đổi cấu hình hoặc bảo mật.\n\n"
+    "📌 Trong thời gian này:\n"
+    "  • Các lệnh /ai, /gpt, /grok, /gemini sẽ chỉ trả về thông báo này.\n"
+    "  • Bạn vẫn có thể dùng các công cụ khác như: /ip, /tiktok, /tiktokinfo.\n\n"
+    "Khi bảo trì hoàn tất, các lệnh AI sẽ hoạt động lại bình thường."
 )
 
 async def ai_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
-    # gửi thông báo bảo trì dài
     await update.message.reply_text(append_footer(MAINT_MSG))
 
 async def exit_ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
-    await update.message.reply_text(append_footer("✅ Bạn đã thoát khỏi chế độ AI (nếu đang bật)."))
+    await update.message.reply_text(append_footer("✅ Đã thoát khỏi chế độ AI."))
 
 async def gpt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
@@ -101,58 +95,50 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(append_footer(
         "✨ *Chào mừng bạn đến với BOT* ✨\n\n"
         "🤖 Công cụ chính:  \n"
-        "  • 🌐 Kiểm tra IP (IP lookup)\n"
-        "  • 🎬 Tải TikTok (video / ảnh)\n"
-        "  • 📱 Lấy thông tin TikTok (nếu API có dữ liệu)\n"
-        "  • 🔧 Chức năng AI: hiện đang bảo trì (xem /ai để biết chi tiết)\n\n"
-        "📌 *Phát triển*: Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
+        "  • 🌐 Kiểm tra thông tin IP\n"
+        "  • 🎬 Tải video/ảnh từ TikTok\n"
+        "  • 📱 Lấy thông tin tài khoản TikTok\n"
+        "  • 🔧 AI (hiện đang bảo trì)\n\n"
+        "📌 *Phát triển*: Tô Minh Điềm – @DuRinn_LeTuanDiem"
     ))
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
     text = (
-        "📖 *HƯỚNG DẪN SỬ DỤNG BOT* — CHI TIẾT\n\n"
+        "📖 *HƯỚNG DẪN CHI TIẾT CÁC LỆNH BOT*\n\n"
 
-        "1) Lệnh cơ bản\n"
-        "   • /start — Hiển thị thông tin giới thiệu bot.\n"
-        "   • /help — Hiển thị hướng dẫn chi tiết này.\n\n"
+        "1) Lệnh cơ bản:\n"
+        "   • /start — Hiển thị lời chào & thông tin bot.\n"
+        "   • /help — Danh sách chi tiết các lệnh.\n\n"
 
-        "2) Chế độ AI (hiện tạm ngưng)\n"
-        "   • /ai — Bật chế độ AI (nơi bạn chọn model và chat với model).\n"
-        "   • /gpt — Chọn ChatGPT làm model.\n"
-        "   • /grok — Chọn Grok làm model.\n"
-        "   • /gemini — Chọn Gemini làm model.\n"
-        "   • /exit — Thoát chế độ AI.\n\n"
-        "   🔧 *Lưu ý về AI (bảo trì):*  \n"
-        "   Hiện các lệnh AI được tạm dừng để bảo trì, cập nhật cấu hình và bảo mật. "
-        "Khi chế độ AI được bật trở lại, thao tác sẽ như sau:  \n"
-        "     1. Gõ /ai  \n"
-        "     2. Gõ /gpt hoặc /grok hoặc /gemini để chọn model  \n"
-        "     3. Nhập câu hỏi — bot sẽ trả lời bằng model bạn chọn.  \n"
-        "   *Nếu bạn cần trả lời tức thời, sử dụng các công cụ khác của bot trong lúc này.*\n\n"
+        "2) Chế độ AI (đang bảo trì):\n"
+        "   • /ai — Bật chế độ AI.\n"
+        "   • /gpt — Chọn ChatGPT.\n"
+        "   • /grok — Chọn Grok.\n"
+        "   • /gemini — Chọn Gemini.\n"
+        "   • /exit — Thoát chế độ AI.\n"
+        "   📌 Lưu ý: Hiện các lệnh này đang tạm dừng, chỉ trả về thông báo bảo trì.\n\n"
 
-        "3) Công cụ IP\n"
-        "   • /ip <địa_chỉ_ip> — Trả về thông tin về IP (quốc gia, thành phố, ISP, tọa độ, múi giờ...).\n"
-        "     Ví dụ: `/ip 8.8.8.8`\n"
-        "   • Ghi chú: lệnh này tra cứu từ dịch vụ bên thứ 3 (ip-api.com) — thông tin dựa trên cơ sở dữ liệu công khai.\n\n"
+        "3) Công cụ kiểm tra IP:\n"
+        "   • /ip <địa_chỉ_ip> — Kiểm tra thông tin của IP: quốc gia, thành phố, ISP, tổ chức, múi giờ, tọa độ.\n"
+        "     Ví dụ: `/ip 8.8.8.8`\n\n"
 
-        "4) TikTok\n"
-        "   • /tiktok <link> — Tải video hoặc ảnh từ link TikTok (chỉ cần cung cấp link, ví dụ: `/tiktok https://www.tiktok.com/@user/video/123`).\n"
-        "     - Nếu là video: bot gửi video (nếu api hỗ trợ).  \n"
-        "     - Nếu là album ảnh: bot gửi lần lượt các ảnh.\n"
-        "   • /tiktokinfo <username> — Lấy thông tin tài khoản TikTok (nếu API trả dữ liệu).\n"
-        "     Ví dụ: `/tiktokinfo username` (không cần @).  \n"
-        "     Trả về: tên hiển thị, uid, verified (nếu có), followers, total likes, số video, bio, avatar (nếu có).\n\n"
+        "4) TikTok:\n"
+        "   • /tiktok <link> — Dán link TikTok để bot tải nội dung:\n"
+        "        - Nếu là video → gửi lại video.\n"
+        "        - Nếu là album ảnh → gửi lại từng ảnh.\n"
+        "   • /tiktokinfo <username> — Lấy thông tin tài khoản TikTok:\n"
+        "        - Tên hiển thị, UID, quốc gia, số follower, tổng lượt thích, số video, bio, avatar.\n\n"
 
-        "5) Lệnh quản trị (chỉ dành cho admin @DuRinn_LeTuanDiem)\n"
-        "   • /shutdown — Dừng bot hoàn toàn.\n"
-        "   • /restart — Khởi động lại bot (server sẽ restart ngay lập tức).\n"
-        "   • /startbot — Kiểm tra trạng thái bot (trả về tin nhắn xác nhận).\n\n"
+        "5) Lệnh quản trị (chỉ admin):\n"
+        "   • /shutdown — Dừng bot.\n"
+        "   • /restart — Khởi động lại bot.\n"
+        "   • /startbot — Kiểm tra trạng thái bot.\n\n"
 
-        "6) Lưu ý & pháp lý\n"
-        "   • Sử dụng công cụ một cách hợp pháp. Không lạm dụng để thu thập thông tin cá nhân mà không được phép.  \n"
-        "   • Bot có thể bị giới hạn hoặc thay đổi hành vi nếu dịch vụ bên thứ ba thay đổi API.\n\n"
-        "Nếu cần hỗ trợ thêm, liên hệ admin: @DuRinn_LeTuanDiem"
+        "6) Lưu ý:\n"
+        "   • Sử dụng hợp pháp, không lạm dụng.\n"
+        "   • Thông tin TikTok/IP lấy từ API công khai, có thể thay đổi.\n\n"
+        "📌 Liên hệ admin: @DuRinn_LeTuanDiem"
     )
     await update.message.reply_text(append_footer(text))
 
@@ -182,7 +168,7 @@ def get_ip_info(ip):
 async def check_ip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
     if not context.args:
-        await update.message.reply_text(append_footer("👉 Dùng: /ip 8.8.8.8"))
+        await update.message.reply_text(append_footer("👉 Dùng: /ip <địa_chỉ_ip>"))
         return
     ip = context.args[0].strip()
     flag_url, info = get_ip_info(ip)
