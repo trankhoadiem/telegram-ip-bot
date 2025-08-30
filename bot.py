@@ -1,6 +1,6 @@
 # bot.py
-from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram import Update, ReplyKeyboardMarkup, ChatMember
+from telegram.ext import Application, CommandHandler, ContextTypes, ChatMemberHandler
 import requests, os, sys, asyncio
 
 # ==== TOKEN ====
@@ -245,10 +245,36 @@ async def tiktok_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
         asyncio.create_task(auto_delete(waiting_msg, 30))
 
 # =======================
+# 🎉 Chào người mới
+# =======================
+async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_member = update.chat_member
+    new_user = chat_member.new_chat_member.user
+
+    # Kiểm tra nếu người mới tham gia (không phải bot)
+    if chat_member.old_chat_member.status in ["left", "kicked"] and chat_member.new_chat_member.status == "member":
+        keyboard = [["/start"]]
+        reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        msg = await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=(
+                f"✨ Chào mừng {new_user.mention_html()} đến với nhóm! ✨\n\n"
+                "💡 Gõ /start để xem hướng dẫn và sử dụng BOT Telegram.\n"
+                "📌 Bot ổn định, cập nhật hàng ngày, phát triển bởi @DuRinn_LeTuanDiem"
+            ),
+            reply_markup=reply_markup,
+            parse_mode="HTML"
+        )
+        asyncio.create_task(auto_delete(msg, 60))  # Xóa sau 60 giây
+
+# =======================
 # MAIN
 # =======================
 def main():
     app = Application.builder().token(TOKEN).build()
+
+    # ChatMember handler cho người mới
+    app.add_handler(ChatMemberHandler(welcome_new_member, ChatMemberHandler.CHAT_MEMBER))
 
     # AI
     app.add_handler(CommandHandler("ai", ai_mode))
