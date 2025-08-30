@@ -6,6 +6,7 @@ import sys
 
 # ==== TOKEN & API KEYS ====
 TOKEN = os.environ.get("TOKEN")
+RAPIDAPI_KEY = os.environ.get("RAPIDAPI_KEY")  # TikTok Info (RapidAPI)
 
 # ==== ADMIN ====
 ADMIN_USERNAME = "DuRinn_LeTuanDiem"
@@ -14,75 +15,55 @@ def is_admin(update: Update):
     user = update.effective_user
     return user and user.username == ADMIN_USERNAME
 
-# ==== TikTok API ====
+# ==== TikTok Download API ====
 TIKWM_API = "https://www.tikwm.com/api/"
 HEADERS = {
     "User-Agent": "Mozilla/5.0",
     "Referer": "https://www.tikwm.com/"
 }
 
-# =======================
-# 🚀 Helper - xóa tin nhắn + footer
-# =======================
-async def delete_user_message(update: Update):
-    try:
-        if update.message:
-            await update.message.delete()
-    except:
-        pass
-
+# ==== Footer ====
 def append_footer(text: str) -> str:
-    return text + "\n\n👉 Gõ /help để xem hướng dẫn | /start"
+    return text + "\n\n🔗 /start | /help"
 
 # =======================
 # 🚀 AI MODE (bảo trì)
 # =======================
 async def ai_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await delete_user_message(update)
-    context.user_data["ai_mode"] = None
-    await update.message.reply_text(append_footer(
-        "🚧 Tính năng **AI (GPT, Grok, Gemini)** hiện đang bảo trì.\n\n"
-        "👉 Vui lòng thử lại sau."
-    ))
+    await update.message.reply_text(append_footer("🚧 Tính năng **AI** (GPT, Grok, Gemini) hiện đang bảo trì."))
 
-async def exit_ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await delete_user_message(update)
-    context.user_data["ai_mode"] = None
-    await update.message.reply_text(append_footer("✅ Bạn đã thoát khỏi **Chế độ AI**."))
-
-# Model commands → chỉ báo bảo trì
 async def gpt(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await delete_user_message(update)
-    await update.message.reply_text(append_footer("🚧 Tính năng **ChatGPT** hiện đang bảo trì."))
+    await update.message.reply_text(append_footer("🚧 ChatGPT hiện đang bảo trì."))
 
 async def grok(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await delete_user_message(update)
-    await update.message.reply_text(append_footer("🚧 Tính năng **Grok** hiện đang bảo trì."))
+    await update.message.reply_text(append_footer("🚧 Grok hiện đang bảo trì."))
 
 async def gemini(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await delete_user_message(update)
-    await update.message.reply_text(append_footer("🚧 Tính năng **Gemini** hiện đang bảo trì."))
+    await update.message.reply_text(append_footer("🚧 Gemini hiện đang bảo trì."))
+
+async def exit_ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(append_footer("✅ Bạn đã thoát khỏi **Chế độ AI**."))
 
 # =======================
 # 🚀 Admin Commands
 # =======================
 async def shutdown(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
-        await update.message.reply_text("⛔ Bạn không có quyền dùng lệnh này.")
+        await update.message.reply_text(append_footer("⛔ Bạn không có quyền dùng lệnh này."))
         return
     await update.message.reply_text(append_footer("🛑 Bot đang **tắt**..."))
     await context.application.stop()
 
 async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
-        await update.message.reply_text("⛔ Bạn không có quyền dùng lệnh này.")
+        await update.message.reply_text(append_footer("⛔ Bạn không có quyền dùng lệnh này."))
         return
     await update.message.reply_text(append_footer("♻️ Bot đang **khởi động lại**..."))
     os.execv(sys.executable, ["python"] + sys.argv)
 
 async def startbot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
-        await update.message.reply_text("⛔ Bạn không có quyền dùng lệnh này.")
+        await update.message.reply_text(append_footer("⛔ Bạn không có quyền dùng lệnh này."))
         return
     await update.message.reply_text(append_footer("✅ Bot đang chạy bình thường!"))
 
@@ -92,42 +73,35 @@ async def startbot(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start(update, context):
     await update.message.reply_text(append_footer(
         "✨ **Chào mừng bạn đến với BOT** ✨\n\n"
-        "🤖 Công cụ: 🌐 Kiểm tra IP | 🎬 Tải TikTok | 🤖 Chat AI (GPT, Grok, Gemini)\n\n"
-        "⚡ Bot vẫn đang **cập nhật hằng ngày**, có thể tồn tại một số lỗi.\n\n"
+        "🤖 Công cụ: 🌐 Kiểm tra IP | 🎬 Tải TikTok | 📱 TikTok Info | 🤖 AI (bảo trì)\n\n"
         "📌 Thành viên phát triển BOT:\n"
         "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
-        "   👤 Telegram Support – @Telegram\n"
         "   🤖 Bot chính thức – @ToMinhDiem_bot"
     ))
 
 async def help_command(update, context):
     text = (
-        "📖 *Hướng dẫn sử dụng BOT* (chi tiết)\n\n"
-        "🚀 **Lệnh cơ bản**:\n"
-        "   • /start — Hiển thị thông tin giới thiệu bot.\n"
-        "   • /help — Hiển thị hướng dẫn chi tiết các lệnh.\n\n"
-        "🤖 **Chế độ AI** (🚧 hiện đang bảo trì):\n"
-        "   • /ai — Bật chế độ AI.\n"
-        "   • /gpt — ChatGPT.\n"
-        "   • /grok — Grok.\n"
-        "   • /gemini — Gemini.\n"
-        "   • /exit — Thoát chế độ AI.\n\n"
-        "🌐 **Công cụ IP**:\n"
-        "   • /ip <ip> — Kiểm tra thông tin chi tiết của một IP.\n"
+        "📖 *Hướng dẫn sử dụng BOT*\n\n"
+        "🚀 **Cơ bản**:\n"
+        "   • /start — Bắt đầu\n"
+        "   • /help — Trợ giúp chi tiết\n\n"
+        "🤖 **Chế độ AI** (🚧 bảo trì):\n"
+        "   • /ai, /gpt, /grok, /gemini — bật AI\n"
+        "   • /exit — Thoát AI\n\n"
+        "🌐 **IP Tools**:\n"
+        "   • /ip <ip> — Kiểm tra thông tin IP\n"
         "   💡 Ví dụ: /ip 8.8.8.8\n\n"
-        "🎬 **Công cụ TikTok**:\n"
-        "   • /tiktok <link> — Tải video hoặc ảnh từ TikTok.\n"
-        "   • /tiktokinfo <username> — Lấy thông tin tài khoản TikTok.\n"
-        "     Bao gồm: tên, UID, quốc gia, ngày sinh, ngày tạo, followers, like, bio...\n"
-        "   💡 Ví dụ: /tiktokinfo username\n\n"
-        "🔒 **Lệnh Admin (chỉ @DuRinn_LeTuanDiem)**:\n"
-        "   • /shutdown — Tắt bot.\n"
-        "   • /restart — Khởi động lại bot.\n"
-        "   • /startbot — Kiểm tra bot có đang hoạt động không.\n\n"
-        "⚡ *Bot được phát triển và cập nhật hằng ngày.*"
+        "🎬 **TikTok**:\n"
+        "   • /tiktok <link> — Tải video/ảnh từ TikTok\n"
+        "   • /tiktokinfo <username> — Thông tin tài khoản TikTok\n\n"
+        "🔒 **Admin**:\n"
+        "   • /shutdown — Tắt bot\n"
+        "   • /restart — Khởi động lại\n"
+        "   • /startbot — Kiểm tra bot"
     )
     await update.message.reply_text(append_footer(text))
 
+# ==== IP Checker ====
 def get_ip_info(ip):
     try:
         url = f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query"
@@ -150,7 +124,6 @@ def get_ip_info(ip):
         return None, f"⚠️ Lỗi khi kiểm tra IP: {e}"
 
 async def check_ip(update, context):
-    await delete_user_message(update)
     if not context.args:
         await update.message.reply_text(append_footer("👉 Dùng: /ip 8.8.8.8"))
         return
@@ -161,8 +134,8 @@ async def check_ip(update, context):
     else:
         await update.message.reply_text(append_footer(info))
 
+# ==== TikTok Downloader ====
 async def download_tiktok(update, context):
-    await delete_user_message(update)
     if not context.args:
         await update.message.reply_text(append_footer("👉 Dùng: /tiktok <link>"))
         return
@@ -185,48 +158,44 @@ async def download_tiktok(update, context):
             for img_url in data["images"]:
                 await update.message.reply_photo(img_url)
         else:
-            await waiting_msg.edit_text(append_footer("⚠️ Không tìm thấy video/ảnh trong link này."))
+            await waiting_msg.edit_text(append_footer("⚠️ Không tìm thấy video/ảnh."))
     except Exception as e:
         await waiting_msg.edit_text(append_footer(f"⚠️ Lỗi khi tải TikTok: {e}"))
 
+# ==== TikTok Info (RapidAPI) ====
 async def tiktok_info(update, context):
-    await delete_user_message(update)
     if not context.args:
         await update.message.reply_text(append_footer("👉 Dùng: /tiktokinfo <username>"))
         return
     username = context.args[0].strip().replace("@", "")
     waiting_msg = await update.message.reply_text(f"⏳ Đang lấy thông tin TikTok @{username}...")
     try:
-        api_url = f"https://www.tikwm.com/api/user/info?unique_id={username}"
-        res = requests.get(api_url, headers=HEADERS, timeout=15).json()
+        url = "https://tiktok-scraper2.p.rapidapi.com/user/info"
+        headers = {
+            "X-RapidAPI-Key": RAPIDAPI_KEY,
+            "X-RapidAPI-Host": "tiktok-scraper2.p.rapidapi.com"
+        }
+        res = requests.get(url, headers=headers, params={"username": username}, timeout=15).json()
         user = res.get("data", {})
 
-        avatar = user.get("avatar", "")
-        nickname = user.get("nickname", "N/A")
+        avatar = user.get("avatar_url", "")
+        nickname = user.get("nickname", "Ẩn")
         uid = user.get("unique_id", username)
-        secid = user.get("sec_uid", "Không có")
         followers = user.get("follower_count", "Ẩn")
         following = user.get("following_count", "Ẩn")
-        heart = user.get("total_favorited", "Ẩn")
-        video_count = user.get("aweme_count", "Ẩn")
-        bio = user.get("signature", "Không có")
-        region = user.get("region", "Không rõ")
+        likes = user.get("heart_count", "Ẩn")
+        videos = user.get("video_count", "Ẩn")
+        bio = user.get("signature", "Ẩn")
         verified = "✅ Có" if user.get("verified") else "❌ Không"
-        birthday = user.get("birthday", "Không công khai")
-        create_time = user.get("create_time", "Không rõ")
 
         caption = (
             f"📱 Thông tin TikTok @{uid}:\n"
             f"👤 Tên: {nickname}\n"
-            f"🆔 Sec-UID: {secid}\n"
-            f"🌍 Quốc gia: {region}\n"
             f"✔️ Verified: {verified}\n"
-            f"🎂 Ngày sinh: {birthday}\n"
-            f"📅 Ngày tạo: {create_time}\n"
             f"👥 Followers: {followers}\n"
             f"👤 Following: {following}\n"
-            f"❤️ Tổng like: {heart}\n"
-            f"🎬 Số video: {video_count}\n"
+            f"❤️ Tổng like: {likes}\n"
+            f"🎬 Số video: {videos}\n"
             f"📝 Bio: {bio}"
         )
 
@@ -236,7 +205,14 @@ async def tiktok_info(update, context):
         else:
             await waiting_msg.edit_text(append_footer(caption))
     except Exception as e:
-        await waiting_msg.edit_text(append_footer(f"⚠️ Lỗi khi lấy TikTok info: {e}"))
+        await waiting_msg.edit_text(append_footer(f"⚠️ Lỗi TikTok info: {e}"))
+
+# ==== Welcome ====
+async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    for member in update.message.new_chat_members:
+        await update.message.reply_text(
+            append_footer(f"🎉👋 Chào mừng {member.full_name} đã tham gia nhóm {update.message.chat.title}!")
+        )
 
 # =======================
 # 🚀 MAIN
@@ -262,6 +238,9 @@ def main():
     app.add_handler(CommandHandler("shutdown", shutdown))
     app.add_handler(CommandHandler("restart", restart))
     app.add_handler(CommandHandler("startbot", startbot))
+
+    # Welcome
+    app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
 
     print("🤖 Bot đang chạy...")
     app.run_polling()
