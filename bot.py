@@ -4,7 +4,7 @@ from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 # 🚨 Dán token bot vào đây
-TOKEN = "123456789:ABCDEF-your-bot-token"
+TOKEN = "8443283550:AAHgVJU6JZ9L5BdfsrRNf2FGVBTwa02XFJw"
 
 FAKE_SERIAL = "H7YQ9ABCDN12"
 FAKE_IMEI = "356789123456789"
