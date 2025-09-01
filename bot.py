@@ -1,106 +1,100 @@
+import requests
+import asyncio
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
-import requests
 
-# 🌐 IP checker
-# =======================
-def get_ip_info(ip):
-    try:
-        url = f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query"
-        res = requests.get(url, timeout=15).json()
-        if res.get("status") == "fail":
-            return None, f"❌ Không tìm thấy IP: {ip}"
-        info = (
-            f"🌐 Thông tin IP {res['query']}:\n"
-            f"🏳️ Quốc gia: {res['country']} ({res['countryCode']})\n"
-            f"🏙 Thành phố: {res['regionName']} - {res['city']} ({res.get('zip','')})\n"
-            f"🕒 Múi giờ: {res['timezone']}\n"
-            f"📍 Tọa độ: {res['lat']}, {res['lon']}\n"
-            f"📡 ISP: {res['isp']}\n"
-            f"🏢 Tổ chức: {res['org']}\n"
-            f"🔗 AS: {res['as']}"
-        )
-        return f"https://flagcdn.com/w320/{res['countryCode'].lower()}.png", info
-    except Exception as e:
-        return None, f"❌ Lỗi khi lấy thông tin IP: {e}"
+# Hàm xử lý lệnh /ip
+async def ip(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        msg = await update.message.reply_text("Vui lòng cung cấp một địa chỉ IP.\nVí dụ: /ip 8.8.8.8")
+        return
 
-# 🎬 TikTok
-# =======================
+    ip_address = context.args[0]
+    url = f"http://ip-api.com/json/{ip_address}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query"
+    res = requests.get(url, timeout=15).json()
+
+    if res.get("status") == "fail":
+        await update.message.reply_text(f"❌ Không tìm thấy IP: {ip_address}")
+        return
+
+    info = (
+        f"🌐 Thông tin IP {res['query']}:\n"
+        f"🏳️ Quốc gia: {res['country']} ({res['countryCode']})\n"
+        f"🏙 Thành phố: {res['regionName']} - {res['city']} ({res.get('zip', '')})\n"
+        f"🕒 Múi giờ: {res['timezone']}\n"
+        f"📍 Tọa độ: {res['lat']}, {res['lon']}\n"
+        f"📡 ISP: {res['isp']}\n"
+        f"🏢 Tổ chức: {res['org']}\n"
+        f"🔗 AS: {res['as']}"
+    )
+    await update.message.reply_text(info, reply_markup=None)
+
+# Hàm xử lý lệnh /tiktok
 async def download_tiktok(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text("/tiktok <link> để tải video/ảnh TikTok")
+        msg = await update.message.reply_text("/tiktok <link> để tải video/ảnh TikTok\n⏳ Tin nhắn này sẽ tự động xoá sau 30 giây")
+        asyncio.create_task(auto_delete(msg, 30))
         return
+
     link = context.args[0].strip()
     waiting_msg = await update.message.reply_text("⏳ Đang xử lý TikTok...")
+
     try:
         res = requests.post("https://www.tikwm.com/api/", data={"url": link}, headers={"User-Agent": "Mozilla/5.0"}, timeout=20).json()
         if res.get("code") != 0 or "data" not in res:
-            await waiting_msg.edit_text("❌ Không tải được TikTok")
+            await waiting_msg.edit_text("❌ Không tải được TikTok\n⏳ Tin nhắn này sẽ tự động xoá sau 30 giây")
+            asyncio.create_task(auto_delete(waiting_msg, 30))
             return
+
         data = res["data"]
         title = data.get("title", "TikTok")
+        await waiting_msg.delete()
+
         if data.get("hdplay") or data.get("play"):
-            msg = await update.message.reply_video(
-                data.get("hdplay") or data.get("play"),
-                caption=f"🎬 {title}"
-            )
+            msg = await update.message.reply_video(data.get("hdplay") or data.get("play"), caption=f"🎬 {title}\n⏳ Tin nhắn này sẽ tự động xoá sau 30 giây")
+            asyncio.create_task(auto_delete(msg, 30))
         elif data.get("images"):
             for img in data["images"]:
                 msg = await update.message.reply_photo(img)
+                asyncio.create_task(auto_delete(msg, 30))
         else:
-            await update.message.reply_text("❌ Không tìm thấy video hoặc ảnh.")
+            await update.message.reply_text("❌ Không có video hoặc ảnh từ link TikTok này.")
     except Exception as e:
         await waiting_msg.edit_text(f"❌ Lỗi: {str(e)}")
 
-# 🔒 Admin commands
-# =======================
+# Hàm xóa tin nhắn tự động sau 30 giây
+async def auto_delete(msg, seconds):
+    await asyncio.sleep(seconds)
+    await msg.delete()
+
+# Hàm xử lý các lệnh Admin
 async def shutdown(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Bot đang tắt... 🛑")
-    await context.bot.stop()
+    await update.message.reply_text("Tắt bot...")
+    # Tắt bot tại đây (dừng tất cả process)
+    await application.stop()
 
 async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Bot đang khởi động lại... 🔄")
-    await context.bot.stop()
+    await update.message.reply_text("Đang khởi động lại bot...")
+    # Khởi động lại bot tại đây
+    await application.stop()
 
-async def start_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Bot đang chạy bình thường ✅")
-
-async def mute(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.reply_to_message.from_user.id
-    await update.message.reply_text(f"🔒 Đã khóa mõm người dùng {user_id} trong 1 phút.")
-    # Logic mute user
-
-async def unmute(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.reply_to_message.from_user.id
-    await update.message.reply_text(f"🔓 Mở khóa người dùng {user_id}.")
-    # Logic unmute user
-
+# Cấu hình lệnh admin
 async def kick(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.reply_to_message.from_user.id
-    await update.message.reply_text(f"👋 Đã đuổi người dùng {user_id} ra khỏi nhóm.")
-    # Logic kick user
+    if not context.args:
+        await update.message.reply_text("Vui lòng cung cấp ID người dùng để kick.")
+        return
+    user_id = context.args[0]
+    try:
+        await update.message.chat.kick_member(user_id)
+        await update.message.reply_text(f"Đã đuổi thành viên {user_id} khỏi nhóm.")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Lỗi: {str(e)}")
 
-async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.reply_to_message.from_user.id
-    await update.message.reply_text(f"🚫 Đã cấm người dùng {user_id} khỏi nhóm.")
-    # Logic ban user
-
-# Lệnh AI chung cho tất cả các model
-async def ai_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Dùng /ask để hỏi GPT-5 của Tô Minh Điềm")
-
-async def grok(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Dùng /ask để hỏi GPT-5 của Tô Minh Điềm")
-
-async def gemini(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Dùng /ask để hỏi GPT-5 của Tô Minh Điềm")
-
-# /start và /help
-# =======================
+# Định nghĩa lệnh /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "✨ Chào mừng bạn đến với BOT ✨\n\n"
-        "🤖 Công cụ: 🌐 Kiểm tra IP | 🎬 Tải TikTok | 🤖 Chat AI (GPT-5)\n\n"
+        "🤖 Công cụ: 🌐 Kiểm tra IP | 🎬 Tải TikTok | 🤖 Chat AI (GPT, Grok, Gemini)\n\n"
         "⚡ Bot vẫn đang cập nhật hằng ngày, có thể tồn tại một số lỗi.\n\n"
         "📌 Thành viên phát triển BOT:\n"
         "   👤 Tô Minh Điềm – Telegram: @DuRinn_LeTuanDiem\n"
@@ -109,6 +103,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "💡 Gõ /help để xem tất cả lệnh khả dụng."
     )
 
+# Cấu hình lệnh /help
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "📖 Hướng dẫn sử dụng BOT chi tiết 📖\n\n"
@@ -134,19 +129,24 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• /mute – 🔒 Khóa chat.\n"
         "• /unmute – 🔓 Mở chat.\n"
         "• /kick – Đuổi thành viên ra khỏi nhóm.\n"
-        "• /ban – Cấm thành viên.\n\n"
+        "• /ban – Cấm thành viên."
     )
 
-# Cấu hình các handler
-application = Application.builder().token("YOUR_BOT_TOKEN").build()
+# Cấu hình bot
+def main():
+    application = Application.builder().token("YOUR_BOT_TOKEN").build()
 
-application.add_handler(CommandHandler("start", start))
-application.add_handler(CommandHandler("help", help))
-application.add_handler(CommandHandler("ai", ai_reply))
-application.add_handler(CommandHandler("grok", grok))
-application.add_handler(CommandHandler("gemini", gemini))
-application.add_handler(CommandHandler("ip", ip))
-application.add_handler(CommandHandler("tiktok", download_tiktok))
+    # Thêm các handler cho các lệnh
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("help", help))
+    application.add_handler(CommandHandler("ip", ip))
+    application.add_handler(CommandHandler("tiktok", download_tiktok))
+    application.add_handler(CommandHandler("shutdown", shutdown))
+    application.add_handler(CommandHandler("restart", restart))
+    application.add_handler(CommandHandler("kick", kick))
 
-# Start bot
-application.run_polling()
+    # Khởi chạy bot
+    application.run_polling()
+
+if __name__ == "__main__":
+    main()
