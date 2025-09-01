@@ -38,7 +38,7 @@ async def auto_delete(msg, delay=30):
 MAINT_MSG = (
     "🛠 *Chức năng AI đang bảo trì*\n\n"
     "Các model ChatGPT, Grok, Gemini tạm thời không hoạt động.\n"
-    "📌 Bạn vẫn có thể dùng: /ip, /tiktok, /tiktokinfo."
+    "📌 Bạn vẫn có thể dùng: /ask"
 )
 
 async def ai_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -134,9 +134,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🔹 /help – Hiển thị danh sách lệnh kèm mô tả chi tiết.\n\n"
         "🤖 Chế độ AI:\n"
         "• /ai – Bật chế độ AI và chọn model để trò chuyện.\n"
-        "• /gpt – Dùng ChatGPT Plus – GPT-5.\n"
-        "• /grok – Dùng Grok (xAI).\n"
-        "• /gemini – Dùng Gemini (Google).\n"
+        "• /gpt – Dùng ChatGPT Plus – GPT-5 (Bảo Trì).\n"
+        "• /grok – Dùng Grok - xAI. (Bảo Trì)\n"
+        "• /gemini – Dùng Gemini - Google (Bảo Trì).\n"
         "• /exit – Thoát khỏi chế độ AI.\n"
         "• /ask <câu hỏi> – Lệnh gọi nhanh GPT-5.\n\n"
         "🌐 Công cụ khác:\n"
