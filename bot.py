@@ -297,7 +297,7 @@ async def kick(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = await update.message.reply_text(f"✅ Đã kick {target_user.full_name}\n⏳ Tin nhắn tự xoá sau 30s")
         asyncio.create_task(auto_delete(msg))
     except Exception as e:
-        msg = await update.message.reply_text(f"✅ Đã kick: {e}\n⏳ Tin nhắn tự xoá sau 30s")
+        msg = await update.message.reply_text(f"⚠️ Lỗi kick: {e}\n⏳ Tin nhắn tự xoá sau 30s")
         asyncio.create_task(auto_delete(msg))
 
 async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -305,7 +305,69 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update):
         msg = await update.message.reply_text("⛔ Chỉ admin mới dùng được\n⏳ Tin nhắn tự xoá sau 30s")
         asyncio.create_task(auto_delete(msg))
-chat: {e}\n⏳ Tin nhắn tự xoá sau 30s")
+        return
+    if not update.message.reply_to_message:
+        msg = await update.message.reply_text("⚠️ Hãy reply vào tin nhắn người muốn ban\n⏳ Tin nhắn tự xoá sau 30s")
+        asyncio.create_task(auto_delete(msg))
+        return
+    target_user = update.message.reply_to_message.from_user
+    try:
+        until_time = datetime.utcnow() + timedelta(days=365*100)  # Ban vô thời hạn gần như
+        await update.effective_chat.restrict_member(
+            user_id=target_user.id,
+            permissions=ChatPermissions(can_send_messages=False),
+            until_date=until_time
+        )
+        msg = await update.message.reply_text(f"✅ Đã ban {target_user.full_name} vĩnh viễn\n⏳ Tin nhắn tự xoá sau 30s")
+        asyncio.create_task(auto_delete(msg))
+    except Exception as e:
+        msg = await update.message.reply_text(f"⚠️ Lỗi ban: {e}\n⏳ Tin nhắn tự xoá sau 30s")
+        asyncio.create_task(auto_delete(msg))
+
+async def mute(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await delete_user_message(update)
+    if not is_admin(update):
+        msg = await update.message.reply_text("⛔ Chỉ admin mới dùng được\n⏳ Tin nhắn tự xoá sau 30s")
+        asyncio.create_task(auto_delete(msg))
+        return
+    if not update.message.reply_to_message:
+        msg = await update.message.reply_text("⚠️ Hãy reply vào tin nhắn người muốn mute\n⏳ Tin nhắn tự xoá sau 30s")
+        asyncio.create_task(auto_delete(msg))
+        return
+    target_user = update.message.reply_to_message.from_user
+    try:
+        until_time = datetime.utcnow() + timedelta(hours=1)  # Mute 1 giờ
+        await update.effective_chat.restrict_member(
+            user_id=target_user.id,
+            permissions=ChatPermissions(can_send_messages=False),
+            until_date=until_time
+        )
+        msg = await update.message.reply_text(f"✅ Đã mute {target_user.full_name} 1 giờ\n⏳ Tin nhắn tự xoá sau 30s")
+        asyncio.create_task(auto_delete(msg))
+    except Exception as e:
+        msg = await update.message.reply_text(f"⚠️ Lỗi mute: {e}\n⏳ Tin nhắn tự xoá sau 30s")
+        asyncio.create_task(auto_delete(msg))
+
+async def unmute(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await delete_user_message(update)
+    if not is_admin(update):
+        msg = await update.message.reply_text("⛔ Chỉ admin mới dùng được\n⏳ Tin nhắn tự xoá sau 30s")
+        asyncio.create_task(auto_delete(msg))
+        return
+    if not update.message.reply_to_message:
+        msg = await update.message.reply_text("⚠️ Hãy reply vào tin nhắn người muốn unmute\n⏳ Tin nhắn tự xoá sau 30s")
+        asyncio.create_task(auto_delete(msg))
+        return
+    target_user = update.message.reply_to_message.from_user
+    try:
+        await update.effective_chat.restrict_member(
+            user_id=target_user.id,
+            permissions=ChatPermissions(can_send_messages=True)
+        )
+        msg = await update.message.reply_text(f"✅ Đã unmute {target_user.full_name}\n⏳ Tin nhắn tự xoá sau 30s")
+        asyncio.create_task(auto_delete(msg))
+    except Exception as e:
+        msg = await update.message.reply_text(f"⚠️ Lỗi unmute: {e}\n⏳ Tin nhắn tự xoá sau 30s")
         asyncio.create_task(auto_delete(msg))
 
 # =======================
