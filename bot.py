@@ -1,8 +1,9 @@
 # bot.py
-from telegram import Update, ReplyKeyboardMarkup, ChatMember, ChatPermissions
+from telegram import Update, ReplyKeyboardMarkup, ChatMember, ChatPermissions, InputFile
 from telegram.ext import Application, CommandHandler, ContextTypes, ChatMemberHandler
 import requests, os, sys, asyncio
 from datetime import datetime, timedelta
+from io import BytesIO
 
 # ==== TOKEN ====
 TOKEN = os.environ.get("TOKEN")
@@ -185,83 +186,65 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
         asyncio.create_task(auto_delete(msg, 60))
 
 # =======================
-# 🌐 IP checker
+# 🌐 IP Checker
 # =======================
 async def ip_lookup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
     if not context.args:
-        msg = await update.message.reply_text("❌ Vui lòng nhập địa chỉ IP.\n👉 Ví dụ: /ip 8.8.8.8")
+        msg = await update.message.reply_text("⚠️ Vui lòng nhập IP. Ví dụ: /ip 8.8.8.8")
         asyncio.create_task(auto_delete(msg))
         return
+
     ip = context.args[0]
     try:
-        res = requests.get(f"http://ip-api.com/json/{ip}").json()
-        if res["status"] == "fail":
-            msg = await update.message.reply_text("❌ Không tìm thấy thông tin IP này.")
-            asyncio.create_task(auto_delete(msg))
-            return
+        res = requests.get(f"http://ip-api.com/json/{ip}?fields=status,message,country,regionName,city,lat,lon,isp,org,query").json()
+        if res["status"] != "success":
+            raise Exception(res.get("message", "Không tìm thấy IP"))
+
         text = (
-            f"🌐 Thông tin IP: `{ip}`\n\n"
-            f"🏙 Thành phố: {res.get('city','N/A')}\n"
-            f"🌍 Quốc gia: {res.get('country','N/A')}\n"
-            f"📡 ISP: {res.get('isp','N/A')}\n"
-            f"🗺 Vĩ độ: {res.get('lat','N/A')}\n"
-            f"🗺 Kinh độ: {res.get('lon','N/A')}\n"
+            f"🌍 Thông tin IP: {res['query']}\n"
+            f"📌 Quốc gia: {res['country']}\n"
+            f"🏙 Thành phố: {res['city']}, {res['regionName']}\n"
+            f"🌐 ISP: {res['isp']}\n"
+            f"🏢 Tổ chức: {res['org']}\n"
+            f"📍 Tọa độ: {res['lat']}, {res['lon']}"
         )
-        msg = await update.message.reply_text(text, parse_mode="Markdown")
-        asyncio.create_task(auto_delete(msg, 30))
-    except Exception:
-        msg = await update.message.reply_text("⚠️ Lỗi khi tra cứu IP.")
+
+        map_url = f"https://maps.locationiq.com/v3/staticmap?key=pk.eyJ1IjoiZHVyaW5uIiwiYSI6ImNseW92c2hrZzA0MGMyaXFsaXR5MWJwMmYifQ.abc123&center={res['lat']},{res['lon']}&zoom=10&size=600x400&markers=icon:small-red-cutout|{res['lat']},{res['lon']}"
+        map_img = requests.get(map_url).content
+
+        msg = await update.message.reply_photo(photo=BytesIO(map_img), caption=text)
+        asyncio.create_task(auto_delete(msg, 60))
+
+    except Exception as e:
+        msg = await update.message.reply_text(f"❌ Lỗi: {e}")
         asyncio.create_task(auto_delete(msg))
 
 # =======================
 # 🎬 TikTok Downloader
 # =======================
-async def tiktok_download(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def tiktok_dl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
     if not context.args:
-        msg = await update.message.reply_text("❌ Vui lòng nhập link TikTok.\n👉 Ví dụ: /tiktok <link>")
+        msg = await update.message.reply_text("⚠️ Vui lòng nhập link TikTok. Ví dụ: /tiktok <link>")
         asyncio.create_task(auto_delete(msg))
         return
-    url = context.args[0]
-    try:
-        res = requests.post(f"{TIKWM_API}download", headers=HEADERS, data={"url": url}).json()
-        if res["code"] != 0:
-            msg = await update.message.reply_text("❌ Không thể tải video TikTok.")
-            asyncio.create_task(auto_delete(msg))
-            return
-        video_url = "https://www.tikwm.com" + res["data"]["play"]
-        await update.message.reply_video(video_url, caption="🎬 Video TikTok không watermark")
-    except Exception:
-        msg = await update.message.reply_text("⚠️ Lỗi khi tải video TikTok.")
-        asyncio.create_task(auto_delete(msg))
 
-async def tiktok_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await delete_user_message(update)
-    if not context.args:
-        msg = await update.message.reply_text("❌ Vui lòng nhập link TikTok.\n👉 Ví dụ: /tiktokinfo <link>")
-        asyncio.create_task(auto_delete(msg))
-        return
     url = context.args[0]
     try:
-        res = requests.post(f"{TIKWM_API}detail", headers=HEADERS, data={"url": url}).json()
+        res = requests.post(TIKWM_API, headers=HEADERS, data={"url": url}).json()
         if res["code"] != 0:
-            msg = await update.message.reply_text("❌ Không thể lấy thông tin video TikTok.")
-            asyncio.create_task(auto_delete(msg))
-            return
+            raise Exception(res.get("msg", "API lỗi"))
+
         data = res["data"]
-        text = (
-            f"🎬 Thông tin video TikTok\n\n"
-            f"👤 Tác giả: {data['author']['unique_id']}\n"
-            f"❤️ Lượt thích: {data['digg_count']}\n"
-            f"💬 Bình luận: {data['comment_count']}\n"
-            f"🔄 Chia sẻ: {data['share_count']}\n"
-            f"👀 Lượt xem: {data['play_count']}"
-        )
-        msg = await update.message.reply_text(text)
-        asyncio.create_task(auto_delete(msg, 30))
-    except Exception:
-        msg = await update.message.reply_text("⚠️ Lỗi khi lấy thông tin TikTok.")
+        video_url = "https://www.tikwm.com" + data["play"]
+        caption = f"🎬 Video từ TikTok\n\n👤 Tác giả: {data['author']['unique_id']}\n❤️ {data['digg_count']} | 💬 {data['comment_count']} | 🔁 {data['share_count']}"
+
+        msg = await update.message.reply_video(video=video_url, caption=caption)
+        asyncio.create_task(auto_delete(msg, 120))
+
+    except Exception as e:
+        msg = await update.message.reply_text(f"❌ Lỗi tải TikTok: {e}")
         asyncio.create_task(auto_delete(msg))
 
 # =======================
@@ -269,47 +252,46 @@ async def tiktok_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # =======================
 async def mute(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
-    if not is_admin(update):
-        msg = await update.message.reply_text("⛔ Bạn không có quyền.")
+    if not update.message.reply_to_message:
+        msg = await update.message.reply_text("⚠️ Hãy reply tin nhắn của người cần mute.")
         asyncio.create_task(auto_delete(msg))
         return
-    chat_id = update.effective_chat.id
-    await context.bot.set_chat_permissions(chat_id, ChatPermissions(can_send_messages=False))
-    msg = await update.message.reply_text("🔒 Nhóm đã bị khóa chat.")
+    user_id = update.message.reply_to_message.from_user.id
+    await context.bot.restrict_chat_member(update.effective_chat.id, user_id, ChatPermissions(can_send_messages=False))
+    msg = await update.message.reply_text("🔒 Người dùng đã bị mute.")
     asyncio.create_task(auto_delete(msg))
 
 async def unmute(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
-    if not is_admin(update):
-        msg = await update.message.reply_text("⛔ Bạn không có quyền.")
+    if not update.message.reply_to_message:
+        msg = await update.message.reply_text("⚠️ Hãy reply tin nhắn của người cần unmute.")
         asyncio.create_task(auto_delete(msg))
         return
-    chat_id = update.effective_chat.id
-    await context.bot.set_chat_permissions(chat_id, ChatPermissions(can_send_messages=True))
-    msg = await update.message.reply_text("🔓 Nhóm đã được mở chat.")
+    user_id = update.message.reply_to_message.from_user.id
+    await context.bot.restrict_chat_member(update.effective_chat.id, user_id, ChatPermissions(can_send_messages=True))
+    msg = await update.message.reply_text("🔓 Người dùng đã được unmute.")
     asyncio.create_task(auto_delete(msg))
 
 async def kick(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
-    if not is_admin(update) or not update.message.reply_to_message:
-        msg = await update.message.reply_text("⛔ Bạn không có quyền hoặc không reply user.")
+    if not update.message.reply_to_message:
+        msg = await update.message.reply_text("⚠️ Hãy reply tin nhắn của người cần kick.")
         asyncio.create_task(auto_delete(msg))
         return
     user_id = update.message.reply_to_message.from_user.id
     await context.bot.ban_chat_member(update.effective_chat.id, user_id, until_date=datetime.now() + timedelta(seconds=60))
-    await context.bot.unban_chat_member(update.effective_chat.id, user_id)
-    msg = await update.message.reply_text("👢 Thành viên đã bị kick.")
+    msg = await update.message.reply_text("👢 Người dùng đã bị kick.")
     asyncio.create_task(auto_delete(msg))
 
 async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await delete_user_message(update)
-    if not is_admin(update) or not update.message.reply_to_message:
-        msg = await update.message.reply_text("⛔ Bạn không có quyền hoặc không reply user.")
+    if not update.message.reply_to_message:
+        msg = await update.message.reply_text("⚠️ Hãy reply tin nhắn của người cần ban.")
         asyncio.create_task(auto_delete(msg))
         return
     user_id = update.message.reply_to_message.from_user.id
     await context.bot.ban_chat_member(update.effective_chat.id, user_id)
-    msg = await update.message.reply_text("⛔ Thành viên đã bị ban.")
+    msg = await update.message.reply_text("⛔ Người dùng đã bị ban.")
     asyncio.create_task(auto_delete(msg))
 
 # =======================
@@ -332,8 +314,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("ip", ip_lookup))
-    app.add_handler(CommandHandler("tiktok", tiktok_download))
-    app.add_handler(CommandHandler("tiktokinfo", tiktok_info))
+    app.add_handler(CommandHandler("tiktok", tiktok_dl))
 
     # Admin
     app.add_handler(CommandHandler("shutdown", shutdown))
